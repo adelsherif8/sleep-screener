@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.0.1
+ * Version:     1.0.2
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.0.1');
+define('SLQ_VERSION',     '1.0.2');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
@@ -99,17 +99,51 @@ add_action('wp_ajax_slq_fetch_folders', function () {
     if (!$api_key || !$location_id) {
         wp_send_json_error(['message' => 'Save your API Key and Location ID first.']); return;
     }
+    $headers = [
+        'Authorization' => 'Bearer ' . $api_key,
+        'Version'       => '2021-07-28',
+        'Accept'        => 'application/json',
+    ];
+
+    // Primary: dedicated folders endpoint
     $resp = wp_remote_get(
         "https://services.leadconnectorhq.com/locations/{$location_id}/customFieldsFolders",
-        ['timeout' => 15, 'headers' => [
-            'Authorization' => 'Bearer ' . $api_key,
-            'Version'       => '2021-07-28',
-            'Accept'        => 'application/json',
-        ]]
+        ['timeout' => 15, 'headers' => $headers]
     );
-    if (is_wp_error($resp)) { wp_send_json_error(['message' => $resp->get_error_message()]); return; }
-    $body    = json_decode(wp_remote_retrieve_body($resp), true);
-    $folders = $body['folders'] ?? $body['customFieldsFolders'] ?? $body['data'] ?? [];
+    if (!is_wp_error($resp)) {
+        $body    = json_decode(wp_remote_retrieve_body($resp), true);
+        $folders = $body['customFieldsFolders'] ?? $body['folders'] ?? $body['data'] ?? [];
+        if (!empty($folders)) {
+            wp_send_json_success(['folders' => $folders]); return;
+        }
+    }
+
+    // Fallback: pull all custom fields and extract unique folder info from them
+    $resp2 = wp_remote_get(
+        "https://services.leadconnectorhq.com/locations/{$location_id}/customFields?model=contact",
+        ['timeout' => 15, 'headers' => $headers]
+    );
+    if (is_wp_error($resp2)) { wp_send_json_error(['message' => $resp2->get_error_message()]); return; }
+    $body2  = json_decode(wp_remote_retrieve_body($resp2), true);
+    $fields = $body2['customFields'] ?? $body2['fields'] ?? $body2['data'] ?? [];
+
+    $folders_map = [];
+    foreach ($fields as $field) {
+        $fid   = $field['folderId']   ?? $field['folder_id']   ?? '';
+        $fname = $field['folderName'] ?? $field['folder_name'] ?? '';
+        if ($fid && $fname && !isset($folders_map[$fid])) {
+            $folders_map[$fid] = ['id' => $fid, 'name' => $fname];
+        }
+    }
+    $folders = array_values($folders_map);
+
+    if (empty($folders)) {
+        wp_send_json_success([
+            'folders' => [],
+            'hint'    => 'No folders found. Use "Create Folder in GHL" below to make one, then re-run Step 2 and Step 3.',
+        ]);
+        return;
+    }
     wp_send_json_success(['folders' => $folders]);
 });
 
