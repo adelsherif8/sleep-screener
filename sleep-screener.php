@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.0.6
+ * Version:     1.0.7
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.0.6');
+define('SLQ_VERSION',     '1.0.7');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
@@ -178,41 +178,73 @@ add_action('wp_ajax_slq_setup_all', function () {
     if (!$folder_id || !$api_key || !$location_id) {
         wp_send_json_error(['message' => 'Select a folder and make sure API Key + Location ID are saved.']); return;
     }
-    $headers = [
-        'Authorization' => 'Bearer ' . $api_key,
-        'Version'       => '2021-07-28',
-        'Content-Type'  => 'application/json',
-    ];
+    $base    = 'https://services.leadconnectorhq.com';
+    $headers = ['Authorization' => 'Bearer ' . $api_key, 'Version' => '2021-07-28', 'Content-Type' => 'application/json'];
+
+    // Fetch all existing custom fields so we can match by fieldKey
+    $r_list  = wp_remote_get("{$base}/locations/{$location_id}/customFields", ['headers' => $headers, 'timeout' => 15]);
+    $b_list  = is_wp_error($r_list) ? [] : (json_decode(wp_remote_retrieve_body($r_list), true) ?? []);
+    $existing = []; // bare fieldKey (after stripping "contact.") → id
+    foreach ($b_list['customFields'] ?? [] as $f) {
+        $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
+        if ($bare) $existing[$bare] = $f['id'];
+    }
+
     $created = 0; $skipped = 0; $moved = 0; $errors = [];
 
     foreach (slq_field_list() as $slug => $meta) {
-        $existing_id = get_option('slq_cf_' . $slug, '');
+        $saved_id = get_option('slq_cf_' . $slug, '');
 
-        if (!$existing_id) {
-            // Create the field with parentId set immediately
-            $resp = wp_remote_post(
-                "https://services.leadconnectorhq.com/locations/{$location_id}/customFields",
-                ['timeout' => 15, 'headers' => $headers,
-                 'body' => wp_json_encode(['name' => $meta['label'], 'dataType' => 'TEXT', 'model' => 'contact', 'parentId' => $folder_id])]
-            );
-            if (is_wp_error($resp)) { $errors[] = $meta['label'] . ': ' . $resp->get_error_message(); continue; }
-            $body = json_decode(wp_remote_retrieve_body($resp), true);
-            $fid  = $body['customField']['id'] ?? $body['id'] ?? '';
-            if (!$fid) { $errors[] = $meta['label'] . ': no ID returned'; continue; }
-            update_option('slq_cf_' . $slug, $fid);
-            $existing_id = $fid;
-            $created++;
-        } else {
+        // Check if already exists in GHL by fieldKey
+        if (!$saved_id && isset($existing[$slug])) {
+            $saved_id = $existing[$slug];
+            update_option('slq_cf_' . $slug, $saved_id);
             $skipped++;
+        } elseif ($saved_id) {
+            $skipped++;
+        } else {
+            // Create — use fieldKey so we can match it on verification GET
+            $resp = wp_remote_post("{$base}/locations/{$location_id}/customFields", [
+                'headers' => $headers, 'timeout' => 15,
+                'body'    => wp_json_encode([
+                    'name'      => $meta['label'],
+                    'fieldKey'  => $slug,
+                    'dataType'  => 'TEXT',
+                    'position'  => 0,
+                    'parentId'  => $folder_id,
+                ]),
+            ]);
+            if (is_wp_error($resp)) { $errors[] = $meta['label'] . ': ' . $resp->get_error_message(); continue; }
+            $body = json_decode(wp_remote_retrieve_body($resp), true) ?? [];
+            $fid  = $body['customField']['id'] ?? $body['id'] ?? '';
+            if ($fid) {
+                update_option('slq_cf_' . $slug, $fid);
+                $saved_id = $fid;
+                $created++;
+            } else {
+                $errors[] = $meta['label'] . ': ' . wp_remote_retrieve_body($resp);
+                continue;
+            }
         }
 
-        // Move / confirm the field is in the right folder
-        $resp2 = wp_remote_request(
-            "https://services.leadconnectorhq.com/locations/{$location_id}/customFields/{$existing_id}",
-            ['method' => 'PUT', 'timeout' => 15, 'headers' => $headers,
-             'body' => wp_json_encode(['parentId' => $folder_id])]
-        );
-        if (!is_wp_error($resp2)) $moved++;
+        // Move field into selected folder
+        $r2 = wp_remote_request("{$base}/locations/{$location_id}/customFields/{$saved_id}", [
+            'method' => 'PUT', 'headers' => $headers, 'timeout' => 15,
+            'body'   => wp_json_encode(['parentId' => $folder_id]),
+        ]);
+        if (!is_wp_error($r2)) $moved++;
+    }
+
+    // Verification GET — catch anything GHL created but whose ID we missed
+    $r_verify = wp_remote_get("{$base}/locations/{$location_id}/customFields", ['headers' => $headers, 'timeout' => 15]);
+    if (!is_wp_error($r_verify)) {
+        $b_verify = json_decode(wp_remote_retrieve_body($r_verify), true) ?? [];
+        foreach ($b_verify['customFields'] ?? [] as $f) {
+            $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
+            if (isset(slq_field_list()[$bare]) && !get_option('slq_cf_' . $bare)) {
+                update_option('slq_cf_' . $bare, $f['id']);
+            }
+        }
     }
 
     wp_send_json_success([
