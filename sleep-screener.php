@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.0.2
+ * Version:     1.0.3
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.0.2');
+define('SLQ_VERSION',     '1.0.3');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
@@ -99,52 +99,55 @@ add_action('wp_ajax_slq_fetch_folders', function () {
     if (!$api_key || !$location_id) {
         wp_send_json_error(['message' => 'Save your API Key and Location ID first.']); return;
     }
-    $headers = [
-        'Authorization' => 'Bearer ' . $api_key,
-        'Version'       => '2021-07-28',
-        'Accept'        => 'application/json',
+
+    $folders = [];
+    $tried   = [];
+
+    $variants = [
+        ['url' => "https://services.leadconnectorhq.com/locations/{$location_id}/customFieldsFolders?model=contact", 'ver' => '2021-07-28'],
+        ['url' => "https://services.leadconnectorhq.com/locations/{$location_id}/customFieldsFolders",               'ver' => '2021-07-28'],
+        ['url' => "https://services.leadconnectorhq.com/locations/{$location_id}/customFieldsFolders",               'ver' => '2021-04-15'],
     ];
 
-    // Primary: dedicated folders endpoint
-    $resp = wp_remote_get(
-        "https://services.leadconnectorhq.com/locations/{$location_id}/customFieldsFolders",
-        ['timeout' => 15, 'headers' => $headers]
-    );
-    if (!is_wp_error($resp)) {
-        $body    = json_decode(wp_remote_retrieve_body($resp), true);
-        $folders = $body['customFieldsFolders'] ?? $body['folders'] ?? $body['data'] ?? [];
-        if (!empty($folders)) {
-            wp_send_json_success(['folders' => $folders]); return;
+    foreach ($variants as $v) {
+        $resp = wp_remote_get($v['url'], ['timeout' => 15, 'headers' => [
+            'Authorization' => 'Bearer ' . $api_key,
+            'Version'       => $v['ver'],
+            'Accept'        => 'application/json',
+        ]]);
+        $code = is_wp_error($resp) ? 'error' : wp_remote_retrieve_response_code($resp);
+        $raw  = is_wp_error($resp) ? $resp->get_error_message() : wp_remote_retrieve_body($resp);
+        $tried[] = 'ver=' . $v['ver'] . ' → HTTP ' . $code . ' → ' . substr($raw, 0, 200);
+        if (!is_wp_error($resp) && $code === 200) {
+            $body    = json_decode($raw, true);
+            $folders = $body['customFieldsFolders'] ?? $body['folders'] ?? $body['data'] ?? [];
+            if (!empty($folders)) {
+                wp_send_json_success(['folders' => $folders]); return;
+            }
         }
     }
 
-    // Fallback: pull all custom fields and extract unique folder info from them
-    $resp2 = wp_remote_get(
+    // Last resort: extract folder info from custom fields list
+    $resp4 = wp_remote_get(
         "https://services.leadconnectorhq.com/locations/{$location_id}/customFields?model=contact",
-        ['timeout' => 15, 'headers' => $headers]
+        ['timeout' => 15, 'headers' => ['Authorization' => 'Bearer ' . $api_key, 'Version' => '2021-07-28', 'Accept' => 'application/json']]
     );
-    if (is_wp_error($resp2)) { wp_send_json_error(['message' => $resp2->get_error_message()]); return; }
-    $body2  = json_decode(wp_remote_retrieve_body($resp2), true);
-    $fields = $body2['customFields'] ?? $body2['fields'] ?? $body2['data'] ?? [];
+    $raw4   = is_wp_error($resp4) ? '' : wp_remote_retrieve_body($resp4);
+    $body4  = json_decode($raw4, true) ?? [];
+    $fields = $body4['customFields'] ?? $body4['fields'] ?? $body4['data'] ?? [];
+    $tried[] = 'customFields endpoint → ' . count($fields) . ' fields, keys: ' . implode(',', array_keys((array)($fields[0] ?? [])));
 
     $folders_map = [];
     foreach ($fields as $field) {
         $fid   = $field['folderId']   ?? $field['folder_id']   ?? '';
         $fname = $field['folderName'] ?? $field['folder_name'] ?? '';
-        if ($fid && $fname && !isset($folders_map[$fid])) {
-            $folders_map[$fid] = ['id' => $fid, 'name' => $fname];
+        if ($fid && !isset($folders_map[$fid])) {
+            $folders_map[$fid] = ['id' => $fid, 'name' => $fname ?: $fid];
         }
     }
     $folders = array_values($folders_map);
 
-    if (empty($folders)) {
-        wp_send_json_success([
-            'folders' => [],
-            'hint'    => 'No folders found. Use "Create Folder in GHL" below to make one, then re-run Step 2 and Step 3.',
-        ]);
-        return;
-    }
-    wp_send_json_success(['folders' => $folders]);
+    wp_send_json_success(['folders' => $folders, 'debug' => implode(' | ', $tried)]);
 });
 
 /* ─── Admin AJAX: GHL create folder ───────────────────────── */
@@ -485,9 +488,15 @@ function slq_render_settings() {
                     (res.data.folders || []).forEach(function(f) {
                         var o = document.createElement('option'); o.value = f.id; o.textContent = f.name; sel.appendChild(o);
                     });
-                    sel.style.display = '';
-                    sel.addEventListener('change', function(){ selectedFolderId = this.value; });
-                    log.textContent = '✓ ' + (res.data.folders || []).length + ' folders loaded. Select one above.';
+                    var count = (res.data.folders || []).length;
+                    if (count > 0) {
+                        sel.style.display = '';
+                        sel.addEventListener('change', function(){ selectedFolderId = this.value; });
+                        log.textContent = '✓ ' + count + ' folders loaded. Select one above.';
+                    } else {
+                        log.style.color = '#92400e';
+                        log.textContent = '0 folders found. DEBUG: ' + (res.data.debug || 'no debug info');
+                    }
                 });
             });
 
