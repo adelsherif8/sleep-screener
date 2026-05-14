@@ -1,0 +1,64 @@
+name: Release Plugin
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read plugin version
+        id: ver
+        run: |
+          VERSION=$(grep "^\s*\*\s*Version:" sleep-screener.php | sed 's/.*Version:[[:space:]]*//' | tr -d '[:space:]')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Detected version: $VERSION"
+
+      - name: Check if release already exists
+        id: check
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v${{ steps.ver.outputs.version }}" --repo ${{ github.repository }} > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release v${{ steps.ver.outputs.version }} already exists — skipping."
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "New version — creating release v${{ steps.ver.outputs.version }}"
+          fi
+
+      - name: Build plugin zip
+        if: steps.check.outputs.exists == 'false'
+        run: |
+          mkdir -p /tmp/build/sleep-screener
+          rsync -av \
+            --exclude='.git' \
+            --exclude='.github' \
+            . /tmp/build/sleep-screener/
+          cd /tmp/build
+          zip -r sleep-screener.zip sleep-screener/
+          mv sleep-screener.zip $GITHUB_WORKSPACE/
+
+      - name: Create GitHub Release
+        if: steps.check.outputs.exists == 'false'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          name: v${{ steps.ver.outputs.version }}
+          body: |
+            Sleep Apnea Screener v${{ steps.ver.outputs.version }}
+
+            Includes both the Berlin Sleep Questionnaire and STOP-Bang Questionnaire.
+
+            Install by uploading `sleep-screener.zip` to WordPress → Plugins → Add New → Upload Plugin.
+            WordPress sites with this plugin installed will auto-update within 12 hours.
+          files: sleep-screener.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
