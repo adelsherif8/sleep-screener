@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.0.5
+ * Version:     1.0.6
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.0.5');
+define('SLQ_VERSION',     '1.0.6');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
@@ -167,63 +167,60 @@ add_action('wp_ajax_slq_create_folder', function () {
     wp_send_json_success(['id' => $fid, 'name' => $folder['name'] ?? $folder_name]);
 });
 
-/* ─── Admin AJAX: GHL create fields ───────────────────────── */
+/* ─── Admin AJAX: GHL create + move all fields (combined) ─── */
 
-add_action('wp_ajax_slq_create_fields', function () {
-    check_ajax_referer('slq_ghl', 'nonce');
-    if (!current_user_can('manage_options')) wp_send_json_error();
-    $api_key     = get_option('slq_ghl_api_key', '');
-    $location_id = get_option('slq_ghl_location_id', '');
-    if (!$api_key || !$location_id) {
-        wp_send_json_error(['message' => 'Save your API Key and Location ID first.']); return;
-    }
-    $created = 0; $skipped = 0; $errors = [];
-    foreach (slq_field_list() as $slug => $meta) {
-        if (get_option('slq_cf_' . $slug)) { $skipped++; continue; }
-        $resp = wp_remote_post(
-            "https://services.leadconnectorhq.com/locations/{$location_id}/customFields",
-            ['timeout' => 15, 'headers' => [
-                'Authorization' => 'Bearer ' . $api_key,
-                'Version'       => '2021-07-28',
-                'Content-Type'  => 'application/json',
-            ], 'body' => wp_json_encode(['name' => $meta['label'], 'dataType' => 'TEXT', 'model' => 'contact'])]
-        );
-        if (is_wp_error($resp)) { $errors[] = $meta['label'] . ': ' . $resp->get_error_message(); continue; }
-        $body = json_decode(wp_remote_retrieve_body($resp), true);
-        $fid  = $body['customField']['id'] ?? $body['id'] ?? '';
-        if ($fid) { update_option('slq_cf_' . $slug, $fid); $created++; }
-        else { $errors[] = $meta['label'] . ': no ID returned'; }
-    }
-    wp_send_json_success(['created' => $created, 'skipped' => $skipped, 'errors' => $errors]);
-});
-
-/* ─── Admin AJAX: GHL move fields ─────────────────────────── */
-
-add_action('wp_ajax_slq_move_fields', function () {
+add_action('wp_ajax_slq_setup_all', function () {
     check_ajax_referer('slq_ghl', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error();
     $folder_id   = sanitize_text_field($_POST['folder_id'] ?? '');
     $api_key     = get_option('slq_ghl_api_key', '');
     $location_id = get_option('slq_ghl_location_id', '');
     if (!$folder_id || !$api_key || !$location_id) {
-        wp_send_json_error(['message' => 'Missing folder, API key, or location ID.']); return;
+        wp_send_json_error(['message' => 'Select a folder and make sure API Key + Location ID are saved.']); return;
     }
-    $moved = 0; $errors = [];
-    foreach (array_keys(slq_field_list()) as $slug) {
-        $fid = get_option('slq_cf_' . $slug, '');
-        if (!$fid) continue;
-        $resp = wp_remote_request(
-            "https://services.leadconnectorhq.com/locations/{$location_id}/customFields/{$fid}",
-            ['method' => 'PUT', 'timeout' => 15, 'headers' => [
-                'Authorization' => 'Bearer ' . $api_key,
-                'Version'       => '2021-07-28',
-                'Content-Type'  => 'application/json',
-            ], 'body' => wp_json_encode(['parentId' => $folder_id])]
+    $headers = [
+        'Authorization' => 'Bearer ' . $api_key,
+        'Version'       => '2021-07-28',
+        'Content-Type'  => 'application/json',
+    ];
+    $created = 0; $skipped = 0; $moved = 0; $errors = [];
+
+    foreach (slq_field_list() as $slug => $meta) {
+        $existing_id = get_option('slq_cf_' . $slug, '');
+
+        if (!$existing_id) {
+            // Create the field with parentId set immediately
+            $resp = wp_remote_post(
+                "https://services.leadconnectorhq.com/locations/{$location_id}/customFields",
+                ['timeout' => 15, 'headers' => $headers,
+                 'body' => wp_json_encode(['name' => $meta['label'], 'dataType' => 'TEXT', 'model' => 'contact', 'parentId' => $folder_id])]
+            );
+            if (is_wp_error($resp)) { $errors[] = $meta['label'] . ': ' . $resp->get_error_message(); continue; }
+            $body = json_decode(wp_remote_retrieve_body($resp), true);
+            $fid  = $body['customField']['id'] ?? $body['id'] ?? '';
+            if (!$fid) { $errors[] = $meta['label'] . ': no ID returned'; continue; }
+            update_option('slq_cf_' . $slug, $fid);
+            $existing_id = $fid;
+            $created++;
+        } else {
+            $skipped++;
+        }
+
+        // Move / confirm the field is in the right folder
+        $resp2 = wp_remote_request(
+            "https://services.leadconnectorhq.com/locations/{$location_id}/customFields/{$existing_id}",
+            ['method' => 'PUT', 'timeout' => 15, 'headers' => $headers,
+             'body' => wp_json_encode(['parentId' => $folder_id])]
         );
-        if (is_wp_error($resp)) { $errors[] = $slug . ': ' . $resp->get_error_message(); }
-        else { $moved++; }
+        if (!is_wp_error($resp2)) $moved++;
     }
-    wp_send_json_success(['moved' => $moved, 'errors' => $errors]);
+
+    wp_send_json_success([
+        'created' => $created,
+        'skipped' => $skipped,
+        'moved'   => $moved,
+        'errors'  => $errors,
+    ]);
 });
 
 /* ─── Settings page ────────────────────────────────────────── */
@@ -352,40 +349,35 @@ function slq_render_settings() {
             <div class="slq-card">
                 <p class="slq-card-title">GHL One-Click Field Setup</p>
                 <p style="margin:0 0 16px;color:#475569;font-size:13px">
-                    Three steps to get all custom fields created and organised in GHL. Save your API Key and Location ID above first, then click Save Settings before running these steps.
+                    Two steps to create all <?php echo count(slq_field_list()); ?> custom fields in GHL and organise them in a folder.
+                    Save your API Key and Location ID above first.
                 </p>
 
-                <p style="font-weight:600;font-size:13px;margin:0 0 4px">Step 1 — Select or create a GHL custom field folder</p>
+                <p style="font-weight:600;font-size:13px;margin:0 0 4px">Step 1 — Pick a folder</p>
+                <p style="color:#475569;font-size:13px;margin:0 0 8px">Fetch your existing GHL folders and select one, <em>or</em> type a name to create a new one.</p>
                 <div class="slq-ghl-row">
-                    <button type="button" class="button button-secondary" id="slq-fetch-folders-btn">Fetch Existing Folders</button>
+                    <button type="button" class="button button-secondary" id="slq-fetch-folders-btn">Fetch Folders from GHL</button>
                     <select id="slq-folders-select" style="display:none"><option value="">— select folder —</option></select>
                 </div>
                 <p class="slq-log" id="slq-fetch-log"></p>
-                <p style="font-size:12px;color:#64748b;margin:10px 0 6px">— or create a new folder —</p>
-                <div class="slq-ghl-row">
-                    <input type="text" id="slq-new-folder-name" placeholder="e.g. Sleep Screener" style="height:34px;border:1px solid #e2e8f0;border-radius:6px;padding:0 10px;font-size:13px;min-width:220px" />
-                    <button type="button" class="button button-secondary" id="slq-create-folder-btn">Create Folder in GHL</button>
+                <div class="slq-ghl-row" style="margin-top:10px">
+                    <input type="text" id="slq-new-folder-name" placeholder="Or type a new folder name…" style="height:34px;border:1px solid #e2e8f0;border-radius:6px;padding:0 10px;font-size:13px;min-width:240px" />
+                    <button type="button" class="button button-secondary" id="slq-create-folder-btn">Create New Folder</button>
                 </div>
                 <p class="slq-log" id="slq-create-folder-log"></p>
 
-                <hr style="margin:18px 0;border:none;border-top:1px solid #f1f5f9">
+                <hr style="margin:20px 0;border:none;border-top:1px solid #f1f5f9">
 
-                <p style="font-weight:600;font-size:13px;margin:0 0 4px">Step 2 — Create all custom fields in GHL</p>
-                <p style="color:#475569;font-size:13px;margin:0 0 8px">
-                    Creates <?php echo count(slq_field_list()); ?> fields (skips any already created). Field IDs are saved automatically.
+                <p style="font-weight:600;font-size:13px;margin:0 0 4px">Step 2 — Create &amp; organise all fields</p>
+                <p style="color:#475569;font-size:13px;margin:0 0 10px">
+                    Creates any missing fields and moves all of them into the selected folder. Field IDs are saved automatically.
                 </p>
                 <div class="slq-ghl-row">
-                    <button type="button" class="button button-secondary" id="slq-create-fields-btn">Create Custom Fields</button>
+                    <button type="button" class="button button-primary" id="slq-setup-all-btn" style="height:36px;padding:0 20px">
+                        Create &amp; Move All Fields
+                    </button>
                 </div>
-                <p class="slq-log" id="slq-create-log"></p>
-
-                <hr style="margin:18px 0;border:none;border-top:1px solid #f1f5f9">
-
-                <p style="font-weight:600;font-size:13px;margin:0 0 4px">Step 3 — Move all fields into the selected folder</p>
-                <div class="slq-ghl-row">
-                    <button type="button" class="button button-secondary" id="slq-move-fields-btn">Move Fields to Folder</button>
-                </div>
-                <p class="slq-log" id="slq-move-log"></p>
+                <p class="slq-log" id="slq-setup-log"></p>
             </div>
 
             <!-- ── GHL Custom Field IDs ── -->
@@ -508,30 +500,20 @@ function slq_render_settings() {
                 });
             });
 
-            // Step 2: Create Fields
-            document.getElementById('slq-create-fields-btn').addEventListener('click', function() {
-                var btn = this, log = document.getElementById('slq-create-log');
-                btn.disabled = true; btn.textContent = 'Creating…'; log.textContent = '';
-                ghlPost('slq_create_fields', {}, function(res) {
-                    btn.disabled = false; btn.textContent = 'Create Custom Fields';
+            // Step 2: Create + Move All Fields
+            document.getElementById('slq-setup-all-btn').addEventListener('click', function() {
+                var btn = this, log = document.getElementById('slq-setup-log');
+                if (!selectedFolderId) { log.textContent = '✗ Select or create a folder in Step 1 first.'; return; }
+                btn.disabled = true; btn.textContent = 'Working…'; log.textContent = 'Creating and moving fields — this may take 20–30 seconds…';
+                ghlPost('slq_setup_all', { folder_id: selectedFolderId }, function(res) {
+                    btn.disabled = false; btn.textContent = 'Create & Move All Fields';
                     if (!res.success) { log.textContent = '✗ ' + (res.data && res.data.message || 'Error'); return; }
                     var d = res.data;
-                    log.textContent = '✓ Created: ' + d.created + '  Already existed (skipped): ' + d.skipped
+                    log.style.color = '#166534';
+                    log.textContent = '✓ Done! Created: ' + d.created + '  Already existed: ' + d.skipped
+                        + '  Moved to folder: ' + d.moved
                         + (d.errors && d.errors.length ? '  Errors: ' + d.errors.join(', ') : '')
-                        + ' — Reload this page to see the saved IDs.';
-                });
-            });
-
-            // Step 3: Move Fields
-            document.getElementById('slq-move-fields-btn').addEventListener('click', function() {
-                var btn = this, log = document.getElementById('slq-move-log');
-                if (!selectedFolderId) { log.textContent = '✗ Select a folder in Step 1 first.'; return; }
-                btn.disabled = true; btn.textContent = 'Moving…'; log.textContent = '';
-                ghlPost('slq_move_fields', { folder_id: selectedFolderId }, function(res) {
-                    btn.disabled = false; btn.textContent = 'Move Fields to Folder';
-                    if (!res.success) { log.textContent = '✗ ' + (res.data && res.data.message || 'Error'); return; }
-                    var d = res.data;
-                    log.textContent = '✓ Moved: ' + d.moved + (d.errors && d.errors.length ? '  Errors: ' + d.errors.join(', ') : '');
+                        + ' — Reload the page to see the saved IDs.';
                 });
             });
 
