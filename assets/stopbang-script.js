@@ -143,7 +143,7 @@
   function validateStep(step) {
     var errors = [];
 
-    if (step === 1) {
+    if (step === TOTAL_STEPS) {
       var name  = wrap.querySelector('[name="full_name"]');
       var email = wrap.querySelector('[name="email"]');
       var phone = wrap.querySelector('[name="phone"]');

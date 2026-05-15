@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.1
+ * Version:     1.1.2
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.1');
+define('SLQ_VERSION',     '1.1.2');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
@@ -31,12 +31,12 @@ function slq_css_vars(string $hex, string $prefix): string {
 
 function slq_field_list(): array {
     return [
-        // Demographics — in Berlin Questionnaire folder (shared field IDs, folder is just organisation)
-        'age'              => ['label' => 'Age',                          'example' => '45',                         'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
-        'gender'           => ['label' => 'Gender',                       'example' => 'male / female',               'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
-        'height'           => ['label' => 'Height',                       'example' => "5'10\" or 178 cm",            'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
-        'weight'           => ['label' => 'Weight',                       'example' => '185 lb or 80 kg',             'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
-        'bmi'              => ['label' => 'BMI',                          'example' => '26.4',                        'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
+        // Demographics — General Questionnaire folder (shared by both forms)
+        'age'              => ['label' => 'Age',                          'example' => '45',                         'group' => 'Demographics',      'folder' => 'General Questionnaire'],
+        'gender'           => ['label' => 'Gender',                       'example' => 'male / female',               'group' => 'Demographics',      'folder' => 'General Questionnaire'],
+        'height'           => ['label' => 'Height',                       'example' => "5'10\" or 178 cm",            'group' => 'Demographics',      'folder' => 'General Questionnaire'],
+        'weight'           => ['label' => 'Weight',                       'example' => '185 lb or 80 kg',             'group' => 'Demographics',      'folder' => 'General Questionnaire'],
+        'bmi'              => ['label' => 'BMI',                          'example' => '26.4',                        'group' => 'Demographics',      'folder' => 'General Questionnaire'],
         // Berlin Answers
         'b_snores'         => ['label' => 'Berlin — Snores?',             'example' => 'yes / no / dont_know',        'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
         'b_snore_volume'   => ['label' => 'Berlin — Snoring volume',      'example' => 'very_loud',                   'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
@@ -103,6 +103,7 @@ function slq_ghl_headers(): array {
 
 function slq_get_folder_ids(): array {
     return [
+        'General Questionnaire'   => get_option('slq_folder_id_general',  ''),
         'Berlin Questionnaire'    => get_option('slq_folder_id_berlin',   ''),
         'STOP-Bang Questionnaire' => get_option('slq_folder_id_stopbang', ''),
     ];
@@ -119,6 +120,7 @@ add_action('wp_ajax_slq_create_checker_field', function () {
     $base    = 'https://services.leadconnectorhq.com';
     $headers = slq_ghl_headers();
     $checkers = [
+        ['name' => 'General Questionnaire Checker',  'fieldKey' => 'slq_checker_general'],
         ['name' => 'Berlin Questionnaire Checker',   'fieldKey' => 'slq_checker_berlin'],
         ['name' => 'STOP-Bang Questionnaire Checker','fieldKey' => 'slq_checker_stopbang'],
     ];
@@ -145,7 +147,7 @@ add_action('wp_ajax_slq_delete_checker_field', function () {
     if (!$api_key || !$location_id) wp_send_json_error(['message' => 'Save API Key and Location ID first.']);
     $base    = 'https://services.leadconnectorhq.com';
     $headers = slq_ghl_headers();
-    $checker_keys = ['slq_checker_berlin', 'slq_checker_stopbang'];
+    $checker_keys = ['slq_checker_general', 'slq_checker_berlin', 'slq_checker_stopbang'];
     $fr = wp_remote_get("{$base}/locations/{$location_id}/customFields", ['headers' => $headers, 'timeout' => 15]);
     if (is_wp_error($fr)) wp_send_json_error(['message' => $fr->get_error_message()]);
     $deleted = []; $errors = [];
@@ -172,28 +174,32 @@ add_action('wp_ajax_slq_detect_folder_id', function () {
     $base = 'https://services.leadconnectorhq.com';
     $fr   = wp_remote_get("{$base}/locations/{$location_id}/customFields", ['headers' => slq_ghl_headers(), 'timeout' => 15]);
     if (is_wp_error($fr)) wp_send_json_error(['message' => $fr->get_error_message()]);
-    $fields  = json_decode(wp_remote_retrieve_body($fr), true)['customFields'] ?? [];
-    $berlin  = ''; $stopbang = '';
+    $fields   = json_decode(wp_remote_retrieve_body($fr), true)['customFields'] ?? [];
+    $general  = ''; $berlin = ''; $stopbang = '';
     foreach ($fields as $f) {
         $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
+        if ($bare === 'slq_checker_general'  && !empty($f['parentId'])) $general  = $f['parentId'];
         if ($bare === 'slq_checker_berlin'   && !empty($f['parentId'])) $berlin   = $f['parentId'];
         if ($bare === 'slq_checker_stopbang' && !empty($f['parentId'])) $stopbang = $f['parentId'];
     }
-    if (!$berlin || !$stopbang) {
-        // Fallback: match known fields by their folder prefix
+    if (!$general || !$berlin || !$stopbang) {
+        // Fallback: match known fields by their folder
         foreach ($fields as $f) {
             if (empty($f['parentId'])) continue;
             $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
-            if (!$berlin   && isset(slq_field_list()[$bare]) && slq_field_list()[$bare]['folder'] === 'Berlin Questionnaire')    $berlin   = $f['parentId'];
-            if (!$stopbang && isset(slq_field_list()[$bare]) && slq_field_list()[$bare]['folder'] === 'STOP-Bang Questionnaire') $stopbang = $f['parentId'];
+            $fl   = slq_field_list();
+            if (!$general  && isset($fl[$bare]) && $fl[$bare]['folder'] === 'General Questionnaire')   $general  = $f['parentId'];
+            if (!$berlin   && isset($fl[$bare]) && $fl[$bare]['folder'] === 'Berlin Questionnaire')    $berlin   = $f['parentId'];
+            if (!$stopbang && isset($fl[$bare]) && $fl[$bare]['folder'] === 'STOP-Bang Questionnaire') $stopbang = $f['parentId'];
         }
     }
-    if (!$berlin && !$stopbang) {
-        wp_send_json_error(['message' => 'Neither checker field found in a folder — drag each into its matching folder first, then retry.']);
+    if (!$general && !$berlin && !$stopbang) {
+        wp_send_json_error(['message' => 'No checker fields found in folders — drag each into its matching folder first, then retry.']);
     }
+    if ($general)  update_option('slq_folder_id_general',  $general);
     if ($berlin)   update_option('slq_folder_id_berlin',   $berlin);
     if ($stopbang) update_option('slq_folder_id_stopbang', $stopbang);
-    wp_send_json_success(['berlin' => $berlin, 'stopbang' => $stopbang]);
+    wp_send_json_success(['general' => $general, 'berlin' => $berlin, 'stopbang' => $stopbang]);
 });
 
 /* ─── Admin AJAX: save folder IDs manually ────────────────── */
@@ -201,11 +207,13 @@ add_action('wp_ajax_slq_detect_folder_id', function () {
 add_action('wp_ajax_slq_save_folder_id', function () {
     check_ajax_referer('slq_ghl', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error();
+    $general  = sanitize_text_field($_POST['folder_general']  ?? '');
     $berlin   = sanitize_text_field($_POST['folder_berlin']   ?? '');
     $stopbang = sanitize_text_field($_POST['folder_stopbang'] ?? '');
+    update_option('slq_folder_id_general',  $general);
     update_option('slq_folder_id_berlin',   $berlin);
     update_option('slq_folder_id_stopbang', $stopbang);
-    wp_send_json_success(['berlin' => $berlin, 'stopbang' => $stopbang]);
+    wp_send_json_success(['general' => $general, 'berlin' => $berlin, 'stopbang' => $stopbang]);
 });
 
 /* ─── Admin AJAX: create + move all fields ─────────────────── */
@@ -419,8 +427,8 @@ function slq_render_settings() {
                             <strong style="font-size:13px;color:#1e293b;">Folder IDs</strong>
                             <div style="margin-top:8px;font-size:11px;color:#64748b;line-height:1.9;">
                                 <strong style="color:#0f172a;font-size:11.5px;">One-time setup — follow these steps in order:</strong><br>
-                                <strong style="color:#2563eb;">Step 1.</strong> In GHL → Settings → Custom Fields → create 2 folders named exactly:&nbsp;<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;">Berlin Questionnaire</code>&nbsp;<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;">STOP-Bang Questionnaire</code><br>
-                                <strong style="color:#2563eb;">Step 2.</strong> Click <strong>+ Create Checker Fields</strong> — 2 temporary marker fields will appear in GHL under Additional Info<br>
+                                <strong style="color:#2563eb;">Step 1.</strong> In GHL → Settings → Custom Fields → create 3 folders named exactly:&nbsp;<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;">General Questionnaire</code>&nbsp;<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;">Berlin Questionnaire</code>&nbsp;<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;">STOP-Bang Questionnaire</code><br>
+                                <strong style="color:#2563eb;">Step 2.</strong> Click <strong>+ Create Checker Fields</strong> — 3 temporary marker fields will appear in GHL under Additional Info<br>
                                 <strong style="color:#2563eb;">Step 3.</strong> In GHL, drag each checker field into its matching folder (names make it obvious)<br>
                                 <strong style="color:#2563eb;">Step 4.</strong> Click <strong>Auto-detect</strong> — folder IDs are found and saved automatically<br>
                                 <strong style="color:#2563eb;">Step 5.</strong> Click <strong>Create &amp; Move All Fields</strong> — all <?php echo count(slq_field_list()); ?> fields created and organised into their folders<br>
@@ -458,6 +466,7 @@ function slq_render_settings() {
                         <div style="display:flex;gap:8px;margin-top:6px;">
                             <input type="text" id="slq-folder-url-input" placeholder="Paste GHL URL here (e.g. …?folderId=AbCdEf…)" style="flex:1;font-size:11px;padding:4px 7px;border:1px solid #cbd5e1;border-radius:4px;">
                             <select id="slq-folder-url-target" style="font-size:11px;padding:4px 7px;border:1px solid #cbd5e1;border-radius:4px;">
+                                <option value="general_questionnaire">General Questionnaire</option>
                                 <option value="berlin_questionnaire">Berlin Questionnaire</option>
                                 <option value="stop_bang_questionnaire">STOP-Bang Questionnaire</option>
                             </select>
@@ -562,6 +571,7 @@ function slq_render_settings() {
                 var btn = this;
                 btn.disabled = true; fst.textContent = 'Saving…'; fst.style.color = '#6b7280';
                 ghlPost('slq_save_folder_id', {
+                    folder_general:  document.getElementById('slq-fid-general_questionnaire').value.trim(),
                     folder_berlin:   document.getElementById('slq-fid-berlin_questionnaire').value.trim(),
                     folder_stopbang: document.getElementById('slq-fid-stop_bang_questionnaire').value.trim(),
                 }, function(res) {
@@ -592,7 +602,7 @@ function slq_render_settings() {
                     btn.disabled = false;
                     if (res.success) {
                         var d = res.data;
-                        fst.textContent = '✓ Created ' + d.created.length + ' checker field(s) in GHL. Drag each into its matching folder, then click Auto-detect.' + (d.errors.length ? ' Errors: ' + d.errors.join(', ') : '');
+                        fst.textContent = '✓ Created ' + d.created.length + ' of 3 checker field(s) in GHL. Drag each into its matching folder, then click Auto-detect.' + (d.errors.length ? ' Errors: ' + d.errors.join(', ') : '');
                         fst.style.color = d.errors.length ? '#d97706' : '#16a34a';
                     } else { fst.textContent = '✗ ' + (res.data && res.data.message || 'Error'); fst.style.color = '#dc2626'; }
                 });
@@ -620,11 +630,12 @@ function slq_render_settings() {
                     btn.disabled = false;
                     if (res.success) {
                         var d = res.data;
-                        if (d.berlin)   document.getElementById('slq-fid-berlin_questionnaire').value   = d.berlin;
+                        if (d.general)  document.getElementById('slq-fid-general_questionnaire').value   = d.general;
+                        if (d.berlin)   document.getElementById('slq-fid-berlin_questionnaire').value    = d.berlin;
                         if (d.stopbang) document.getElementById('slq-fid-stop_bang_questionnaire').value = d.stopbang;
-                        var found = (d.berlin ? 1 : 0) + (d.stopbang ? 1 : 0);
-                        fst.textContent = '✓ Detected ' + found + ' of 2 folder IDs — saved automatically.';
-                        fst.style.color = found === 2 ? '#16a34a' : '#d97706';
+                        var found = (d.general ? 1 : 0) + (d.berlin ? 1 : 0) + (d.stopbang ? 1 : 0);
+                        fst.textContent = '✓ Detected ' + found + ' of 3 folder IDs — saved automatically.';
+                        fst.style.color = found === 3 ? '#16a34a' : '#d97706';
                     } else { fst.textContent = '✗ ' + (res.data && res.data.message || 'Error'); fst.style.color = '#dc2626'; }
                 });
             });

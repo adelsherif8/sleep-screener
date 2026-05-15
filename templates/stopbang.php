@@ -34,33 +34,8 @@
   <!-- Steps -->
   <div class="sbq-body" id="sbq-body">
 
-    <!-- STEP 1: Contact -->
+    <!-- STEP 1: STOP -->
     <div class="sbq-step active" data-step="1">
-      <div class="sbq-step-intro">
-        <span class="sbq-step-badge">Contact Info</span>
-        <h2>Let's start with your details</h2>
-        <p>Your information is private and used only to follow up on your results.</p>
-      </div>
-      <div class="sbq-fields">
-        <div class="sbq-field">
-          <label for="sbq-full-name">Full Name <span class="req">*</span></label>
-          <input type="text" id="sbq-full-name" name="full_name" placeholder="Jane Smith" autocomplete="name" />
-        </div>
-        <div class="sbq-field-row">
-          <div class="sbq-field">
-            <label for="sbq-email">Email Address <span class="req">*</span></label>
-            <input type="email" id="sbq-email" name="email" placeholder="jane@email.com" autocomplete="email" />
-          </div>
-          <div class="sbq-field">
-            <label for="sbq-phone">Phone Number <span class="req">*</span></label>
-            <input type="tel" id="sbq-phone" name="phone" placeholder="(519) 000-0000" autocomplete="tel" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 2: STOP -->
-    <div class="sbq-step" data-step="2">
       <div class="sbq-step-intro">
         <span class="sbq-step-badge">STOP Questions</span>
         <h2>About your sleep at night</h2>
@@ -116,8 +91,8 @@
       </div>
     </div>
 
-    <!-- STEP 3: BANG -->
-    <div class="sbq-step" data-step="3">
+    <!-- STEP 2: BANG -->
+    <div class="sbq-step" data-step="2">
       <div class="sbq-step-intro">
         <span class="sbq-step-badge">BANG Questions</span>
         <h2>A few more details</h2>
@@ -214,6 +189,31 @@
           </div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- STEP 3: Contact Info -->
+    <div class="sbq-step" data-step="3">
+      <div class="sbq-step-intro">
+        <span class="sbq-step-badge">Contact Info</span>
+        <h2>Almost done — where should we send your results?</h2>
+        <p>Your information is private and used only to follow up on your results.</p>
+      </div>
+      <div class="sbq-fields">
+        <div class="sbq-field">
+          <label for="sbq-full-name">Full Name <span class="req">*</span></label>
+          <input type="text" id="sbq-full-name" name="full_name" placeholder="Jane Smith" autocomplete="name" />
+        </div>
+        <div class="sbq-field-row">
+          <div class="sbq-field">
+            <label for="sbq-email">Email Address <span class="req">*</span></label>
+            <input type="email" id="sbq-email" name="email" placeholder="jane@email.com" autocomplete="email" />
+          </div>
+          <div class="sbq-field">
+            <label for="sbq-phone">Phone Number <span class="req">*</span></label>
+            <input type="tel" id="sbq-phone" name="phone" placeholder="(519) 000-0000" autocomplete="tel" />
+          </div>
+        </div>
       </div>
     </div>
 

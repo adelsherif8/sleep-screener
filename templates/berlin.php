@@ -33,34 +33,8 @@
   <!-- ── Steps ── -->
   <div class="bsq-body" id="bsq-body">
 
-    <!-- STEP 1: Contact -->
+    <!-- STEP 1: Profile -->
     <div class="bsq-step active" data-step="1">
-      <div class="bsq-step-intro">
-        <span class="bsq-step-badge">Contact Info</span>
-        <h2>Let's start with your details</h2>
-        <p>Your information is private and used only to follow up on your results.</p>
-      </div>
-
-      <div class="bsq-fields">
-        <div class="bsq-field">
-          <label for="bsq-full-name">Full Name <span class="req">*</span></label>
-          <input type="text" id="bsq-full-name" name="full_name" placeholder="Jane Smith" autocomplete="name" />
-        </div>
-        <div class="bsq-field-row">
-          <div class="bsq-field">
-            <label for="bsq-email">Email Address <span class="req">*</span></label>
-            <input type="email" id="bsq-email" name="email" placeholder="jane@email.com" autocomplete="email" />
-          </div>
-          <div class="bsq-field">
-            <label for="bsq-phone">Phone Number <span class="req">*</span></label>
-            <input type="tel" id="bsq-phone" name="phone" placeholder="(519) 000-0000" autocomplete="tel" />
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- STEP 2: Profile -->
-    <div class="bsq-step" data-step="2">
       <div class="bsq-step-intro">
         <span class="bsq-step-badge">Your Profile</span>
         <h2>A bit about you</h2>
@@ -108,8 +82,8 @@
       </div>
     </div>
 
-    <!-- STEP 3: Snoring & Breathing -->
-    <div class="bsq-step" data-step="3">
+    <!-- STEP 2: Snoring & Breathing -->
+    <div class="bsq-step" data-step="2">
       <div class="bsq-step-intro">
         <span class="bsq-step-badge">Snoring & Breathing</span>
         <h2>About your sleep at night</h2>
@@ -170,8 +144,8 @@
       </div>
     </div>
 
-    <!-- STEP 4: Energy & Alertness -->
-    <div class="bsq-step" data-step="4">
+    <!-- STEP 3: Energy & Alertness -->
+    <div class="bsq-step" data-step="3">
       <div class="bsq-step-intro">
         <span class="bsq-step-badge">Energy & Alertness</span>
         <h2>How do you feel day to day?</h2>
@@ -213,12 +187,12 @@
       </div>
     </div>
 
-    <!-- STEP 5: Health History -->
-    <div class="bsq-step" data-step="5">
+    <!-- STEP 4: Health History -->
+    <div class="bsq-step" data-step="4">
       <div class="bsq-step-intro">
         <span class="bsq-step-badge">Health History</span>
-        <h2>One last question</h2>
-        <p>This is the final step before we calculate your results.</p>
+        <h2>One more question</h2>
+        <p>This helps complete the Berlin scoring criteria.</p>
       </div>
 
       <div class="bsq-questions">
@@ -231,7 +205,32 @@
           </div>
         </div>
       </div>
+    </div>
 
+    <!-- STEP 5: Contact Info -->
+    <div class="bsq-step" data-step="5">
+      <div class="bsq-step-intro">
+        <span class="bsq-step-badge">Contact Info</span>
+        <h2>Almost done — where should we send your results?</h2>
+        <p>Your information is private and used only to follow up on your results.</p>
+      </div>
+
+      <div class="bsq-fields">
+        <div class="bsq-field">
+          <label for="bsq-full-name">Full Name <span class="req">*</span></label>
+          <input type="text" id="bsq-full-name" name="full_name" placeholder="Jane Smith" autocomplete="name" />
+        </div>
+        <div class="bsq-field-row">
+          <div class="bsq-field">
+            <label for="bsq-email">Email Address <span class="req">*</span></label>
+            <input type="email" id="bsq-email" name="email" placeholder="jane@email.com" autocomplete="email" />
+          </div>
+          <div class="bsq-field">
+            <label for="bsq-phone">Phone Number <span class="req">*</span></label>
+            <input type="tel" id="bsq-phone" name="phone" placeholder="(519) 000-0000" autocomplete="tel" />
+          </div>
+        </div>
+      </div>
     </div>
 
   </div><!-- /bsq-body -->
