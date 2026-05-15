@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.0
+ * Version:     1.1.1
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.0');
+define('SLQ_VERSION',     '1.1.1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
@@ -293,7 +293,7 @@ function slq_render_settings() {
     if (isset($_POST['slq_nonce']) && wp_verify_nonce($_POST['slq_nonce'], 'slq_save')) {
         update_option('slq_ghl_api_key',     sanitize_text_field($_POST['slq_ghl_api_key']     ?? ''));
         update_option('slq_ghl_location_id', sanitize_text_field($_POST['slq_ghl_location_id'] ?? ''));
-        update_option('slq_booking_url',     sanitize_text_field($_POST['slq_booking_url']     ?? '/book-appointment'));
+        update_option('slq_booking_url',     sanitize_text_field($_POST['slq_booking_url']     ?? '/thank-you'));
         update_option('slq_primary_color',   sanitize_hex_color($_POST['slq_primary_color']    ?? '#2d6a5a') ?: '#2d6a5a');
         foreach (array_keys(slq_field_list()) as $key) {
             update_option('slq_cf_' . $key, sanitize_text_field($_POST['slq_cf_' . $key] ?? ''));
@@ -303,7 +303,7 @@ function slq_render_settings() {
 
     $api_key     = get_option('slq_ghl_api_key',     '');
     $location_id = get_option('slq_ghl_location_id', '');
-    $booking_url = get_option('slq_booking_url',     '/book-appointment');
+    $booking_url = get_option('slq_booking_url',     '/thank-you');
     $primary     = get_option('slq_primary_color',   '#2d6a5a');
 
     $groups = [];
@@ -397,12 +397,12 @@ function slq_render_settings() {
                         </td>
                     </tr>
                     <tr>
-                        <th><label for="slq_booking_url">Booking Page URL</label></th>
+                        <th><label for="slq_booking_url">Thank You Page URL</label></th>
                         <td>
                             <input type="text" id="slq_booking_url" name="slq_booking_url"
                                    value="<?php echo esc_attr($booking_url); ?>" class="regular-text"
-                                   placeholder="/book-appointment" />
-                            <p class="description">The "Book Appointment" button on both results screens links here.</p>
+                                   placeholder="/thank-you" />
+                            <p class="description">After completing either questionnaire, the CTA button sends patients here.</p>
                         </td>
                     </tr>
                 </table>

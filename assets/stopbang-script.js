@@ -252,7 +252,7 @@
 
   /* ── Render results ── */
   function renderResults(score) {
-    var bookingUrl = (typeof SBQ !== 'undefined' && SBQ.booking_url) ? SBQ.booking_url : '/book-appointment';
+    var bookingUrl = (typeof SBQ !== 'undefined' && SBQ.booking_url) ? SBQ.booking_url : '/thank-you';
 
     var badgeCls = { High: 'sbq-risk-badge--high', Intermediate: 'sbq-risk-badge--int', Low: 'sbq-risk-badge--low' };
     var headlines = {

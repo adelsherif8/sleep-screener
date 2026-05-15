@@ -207,7 +207,7 @@
 
   /* ── Render results ── */
   function renderResults(score) {
-    var bookingUrl = (typeof BSQ !== 'undefined' && BSQ.booking_url) ? BSQ.booking_url : '/booking-method';
+    var bookingUrl = (typeof BSQ !== 'undefined' && BSQ.booking_url) ? BSQ.booking_url : '/thank-you';
     var high = score.high;
 
     var riskBadge = high
