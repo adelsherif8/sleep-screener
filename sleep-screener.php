@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.0.9
+ * Version:     1.1.0
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.0.9');
+define('SLQ_VERSION',     '1.1.0');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
@@ -31,39 +31,39 @@ function slq_css_vars(string $hex, string $prefix): string {
 
 function slq_field_list(): array {
     return [
-        // Demographics — shared by both forms
-        'age'              => ['label' => 'Age',                          'example' => '45',                         'group' => 'Demographics'],
-        'gender'           => ['label' => 'Gender',                       'example' => 'male / female',               'group' => 'Demographics'],
-        'height'           => ['label' => 'Height',                       'example' => "5'10\" or 178 cm",            'group' => 'Demographics'],
-        'weight'           => ['label' => 'Weight',                       'example' => '185 lb or 80 kg',             'group' => 'Demographics'],
-        'bmi'              => ['label' => 'BMI',                          'example' => '26.4',                        'group' => 'Demographics'],
+        // Demographics — in Berlin Questionnaire folder (shared field IDs, folder is just organisation)
+        'age'              => ['label' => 'Age',                          'example' => '45',                         'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
+        'gender'           => ['label' => 'Gender',                       'example' => 'male / female',               'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
+        'height'           => ['label' => 'Height',                       'example' => "5'10\" or 178 cm",            'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
+        'weight'           => ['label' => 'Weight',                       'example' => '185 lb or 80 kg',             'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
+        'bmi'              => ['label' => 'BMI',                          'example' => '26.4',                        'group' => 'Demographics',      'folder' => 'Berlin Questionnaire'],
         // Berlin Answers
-        'b_snores'         => ['label' => 'Berlin — Snores?',             'example' => 'yes / no / dont_know',        'group' => 'Berlin Answers'],
-        'b_snore_volume'   => ['label' => 'Berlin — Snoring volume',      'example' => 'very_loud',                   'group' => 'Berlin Answers'],
-        'b_snore_freq'     => ['label' => 'Berlin — Snoring frequency',   'example' => 'nearly_every_day',            'group' => 'Berlin Answers'],
-        'b_bothers_others' => ['label' => 'Berlin — Bothers others?',     'example' => 'yes / no',                    'group' => 'Berlin Answers'],
-        'b_stop_breathing' => ['label' => 'Berlin — Stop breathing?',     'example' => 'nearly_every_day',            'group' => 'Berlin Answers'],
-        'b_tired_sleep'    => ['label' => 'Berlin — Tired after sleep',   'example' => '3_4_times',                   'group' => 'Berlin Answers'],
-        'b_tired_day'      => ['label' => 'Berlin — Tired during day',    'example' => 'nearly_every_day',            'group' => 'Berlin Answers'],
-        'b_fall_asleep'    => ['label' => 'Berlin — Fall asleep driving?','example' => 'yes / no',                   'group' => 'Berlin Answers'],
-        'b_blood_pressure' => ['label' => 'Berlin — Blood pressure?',     'example' => 'yes / no / dont_know',        'group' => 'Berlin Answers'],
+        'b_snores'         => ['label' => 'Berlin — Snores?',             'example' => 'yes / no / dont_know',        'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
+        'b_snore_volume'   => ['label' => 'Berlin — Snoring volume',      'example' => 'very_loud',                   'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
+        'b_snore_freq'     => ['label' => 'Berlin — Snoring frequency',   'example' => 'nearly_every_day',            'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
+        'b_bothers_others' => ['label' => 'Berlin — Bothers others?',     'example' => 'yes / no',                    'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
+        'b_stop_breathing' => ['label' => 'Berlin — Stop breathing?',     'example' => 'nearly_every_day',            'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
+        'b_tired_sleep'    => ['label' => 'Berlin — Tired after sleep',   'example' => '3_4_times',                   'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
+        'b_tired_day'      => ['label' => 'Berlin — Tired during day',    'example' => 'nearly_every_day',            'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
+        'b_fall_asleep'    => ['label' => 'Berlin — Fall asleep driving?','example' => 'yes / no',                   'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
+        'b_blood_pressure' => ['label' => 'Berlin — Blood pressure?',     'example' => 'yes / no / dont_know',        'group' => 'Berlin Answers',    'folder' => 'Berlin Questionnaire'],
         // Berlin Score
-        'b_risk_level'     => ['label' => 'Berlin — Risk Level',          'example' => 'High Risk / Low Risk',        'group' => 'Berlin Score'],
-        'b_pos_categories' => ['label' => 'Berlin — Positive Categories', 'example' => '2',                          'group' => 'Berlin Score'],
-        'b_cat1_positive'  => ['label' => 'Berlin — Category 1 Positive', 'example' => 'Yes / No',                   'group' => 'Berlin Score'],
-        'b_cat2_positive'  => ['label' => 'Berlin — Category 2 Positive', 'example' => 'Yes / No',                   'group' => 'Berlin Score'],
-        'b_cat3_positive'  => ['label' => 'Berlin — Category 3 Positive', 'example' => 'Yes / No',                   'group' => 'Berlin Score'],
+        'b_risk_level'     => ['label' => 'Berlin — Risk Level',          'example' => 'High Risk / Low Risk',        'group' => 'Berlin Score',      'folder' => 'Berlin Questionnaire'],
+        'b_pos_categories' => ['label' => 'Berlin — Positive Categories', 'example' => '2',                          'group' => 'Berlin Score',      'folder' => 'Berlin Questionnaire'],
+        'b_cat1_positive'  => ['label' => 'Berlin — Category 1 Positive', 'example' => 'Yes / No',                   'group' => 'Berlin Score',      'folder' => 'Berlin Questionnaire'],
+        'b_cat2_positive'  => ['label' => 'Berlin — Category 2 Positive', 'example' => 'Yes / No',                   'group' => 'Berlin Score',      'folder' => 'Berlin Questionnaire'],
+        'b_cat3_positive'  => ['label' => 'Berlin — Category 3 Positive', 'example' => 'Yes / No',                   'group' => 'Berlin Score',      'folder' => 'Berlin Questionnaire'],
         // STOP-Bang Answers
-        'sb_snoring'       => ['label' => 'STOP-Bang — Snoring',          'example' => 'yes / no',                   'group' => 'STOP-Bang Answers'],
-        'sb_tired'         => ['label' => 'STOP-Bang — Tired',            'example' => 'yes / no',                   'group' => 'STOP-Bang Answers'],
-        'sb_observed'      => ['label' => 'STOP-Bang — Observed',         'example' => 'yes / no',                   'group' => 'STOP-Bang Answers'],
-        'sb_pressure'      => ['label' => 'STOP-Bang — High Pressure',    'example' => 'yes / no',                   'group' => 'STOP-Bang Answers'],
-        'sb_neck_large'    => ['label' => 'STOP-Bang — Neck ≥ 16″',       'example' => 'yes / no',                   'group' => 'STOP-Bang Answers'],
+        'sb_snoring'       => ['label' => 'STOP-Bang — Snoring',          'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'sb_tired'         => ['label' => 'STOP-Bang — Tired',            'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'sb_observed'      => ['label' => 'STOP-Bang — Observed',         'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'sb_pressure'      => ['label' => 'STOP-Bang — High Pressure',    'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'sb_neck_large'    => ['label' => 'STOP-Bang — Neck ≥ 16″',       'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
         // STOP-Bang Score
-        'sb_stop_score'    => ['label' => 'STOP-Bang — STOP Score',       'example' => '3',                          'group' => 'STOP-Bang Score'],
-        'sb_bang_score'    => ['label' => 'STOP-Bang — BANG Score',       'example' => '2',                          'group' => 'STOP-Bang Score'],
-        'sb_total_score'   => ['label' => 'STOP-Bang — Total Score',      'example' => '5',                          'group' => 'STOP-Bang Score'],
-        'sb_risk_level'    => ['label' => 'STOP-Bang — Risk Level',       'example' => 'High / Intermediate / Low',  'group' => 'STOP-Bang Score'],
+        'sb_stop_score'    => ['label' => 'STOP-Bang — STOP Score',       'example' => '3',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
+        'sb_bang_score'    => ['label' => 'STOP-Bang — BANG Score',       'example' => '2',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
+        'sb_total_score'   => ['label' => 'STOP-Bang — Total Score',      'example' => '5',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
+        'sb_risk_level'    => ['label' => 'STOP-Bang — Risk Level',       'example' => 'High / Intermediate / Low',  'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
     ];
 }
 
@@ -99,7 +99,16 @@ function slq_ghl_headers(): array {
     ];
 }
 
-/* ─── Admin AJAX: create checker field ────────────────────── */
+/* ─── Helper: get both stored folder IDs ──────────────────── */
+
+function slq_get_folder_ids(): array {
+    return [
+        'Berlin Questionnaire'    => get_option('slq_folder_id_berlin',   ''),
+        'STOP-Bang Questionnaire' => get_option('slq_folder_id_stopbang', ''),
+    ];
+}
+
+/* ─── Admin AJAX: create both checker fields ──────────────── */
 
 add_action('wp_ajax_slq_create_checker_field', function () {
     check_ajax_referer('slq_ghl', 'nonce');
@@ -107,21 +116,26 @@ add_action('wp_ajax_slq_create_checker_field', function () {
     $api_key     = get_option('slq_ghl_api_key', '');
     $location_id = get_option('slq_ghl_location_id', '');
     if (!$api_key || !$location_id) wp_send_json_error(['message' => 'Save API Key and Location ID first.']);
-    $base = 'https://services.leadconnectorhq.com';
-    $r    = wp_remote_post("{$base}/locations/{$location_id}/customFields", [
-        'headers' => slq_ghl_headers(), 'timeout' => 15,
-        'body'    => wp_json_encode(['name' => 'Sleep Screener Checker', 'fieldKey' => 'slq_checker_sleep_screener', 'dataType' => 'TEXT', 'position' => 0]),
-    ]);
-    $code = is_wp_error($r) ? 0 : wp_remote_retrieve_response_code($r);
-    if ($code >= 200 && $code < 300 || $code === 400) {
-        wp_send_json_success(['message' => 'Checker field created in GHL. Now drag it into the Sleep Screener folder, then click Auto-detect.']);
-    } else {
-        $msg = is_wp_error($r) ? $r->get_error_message() : (json_decode(wp_remote_retrieve_body($r), true)['message'] ?? 'HTTP ' . $code);
-        wp_send_json_error(['message' => $msg]);
+    $base    = 'https://services.leadconnectorhq.com';
+    $headers = slq_ghl_headers();
+    $checkers = [
+        ['name' => 'Berlin Questionnaire Checker',   'fieldKey' => 'slq_checker_berlin'],
+        ['name' => 'STOP-Bang Questionnaire Checker','fieldKey' => 'slq_checker_stopbang'],
+    ];
+    $created = []; $errors = [];
+    foreach ($checkers as $c) {
+        $r    = wp_remote_post("{$base}/locations/{$location_id}/customFields", [
+            'headers' => $headers, 'timeout' => 15,
+            'body'    => wp_json_encode(['name' => $c['name'], 'fieldKey' => $c['fieldKey'], 'dataType' => 'TEXT', 'position' => 0]),
+        ]);
+        $code = is_wp_error($r) ? 0 : wp_remote_retrieve_response_code($r);
+        if ($code >= 200 && $code < 300 || $code === 400) { $created[] = $c['name']; }
+        else { $errors[] = $c['name'] . ': ' . (is_wp_error($r) ? $r->get_error_message() : (json_decode(wp_remote_retrieve_body($r), true)['message'] ?? 'HTTP ' . $code)); }
     }
+    wp_send_json_success(['created' => $created, 'errors' => $errors]);
 });
 
-/* ─── Admin AJAX: delete checker field ────────────────────── */
+/* ─── Admin AJAX: delete both checker fields ──────────────── */
 
 add_action('wp_ajax_slq_delete_checker_field', function () {
     check_ajax_referer('slq_ghl', 'nonce');
@@ -131,12 +145,13 @@ add_action('wp_ajax_slq_delete_checker_field', function () {
     if (!$api_key || !$location_id) wp_send_json_error(['message' => 'Save API Key and Location ID first.']);
     $base    = 'https://services.leadconnectorhq.com';
     $headers = slq_ghl_headers();
-    $fr      = wp_remote_get("{$base}/locations/{$location_id}/customFields", ['headers' => $headers, 'timeout' => 15]);
+    $checker_keys = ['slq_checker_berlin', 'slq_checker_stopbang'];
+    $fr = wp_remote_get("{$base}/locations/{$location_id}/customFields", ['headers' => $headers, 'timeout' => 15]);
     if (is_wp_error($fr)) wp_send_json_error(['message' => $fr->get_error_message()]);
     $deleted = []; $errors = [];
     foreach (json_decode(wp_remote_retrieve_body($fr), true)['customFields'] ?? [] as $f) {
         $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
-        if ($bare !== 'slq_checker_sleep_screener') continue;
+        if (!in_array($bare, $checker_keys, true)) continue;
         $dr   = wp_remote_request("{$base}/locations/{$location_id}/customFields/{$f['id']}", [
             'method' => 'DELETE', 'headers' => $headers, 'timeout' => 15,
         ]);
@@ -146,7 +161,7 @@ add_action('wp_ajax_slq_delete_checker_field', function () {
     wp_send_json_success(['deleted' => $deleted, 'errors' => $errors]);
 });
 
-/* ─── Admin AJAX: auto-detect Sleep Screener folder ID ─────── */
+/* ─── Admin AJAX: auto-detect both folder IDs ─────────────── */
 
 add_action('wp_ajax_slq_detect_folder_id', function () {
     check_ajax_referer('slq_ghl', 'nonce');
@@ -157,40 +172,40 @@ add_action('wp_ajax_slq_detect_folder_id', function () {
     $base = 'https://services.leadconnectorhq.com';
     $fr   = wp_remote_get("{$base}/locations/{$location_id}/customFields", ['headers' => slq_ghl_headers(), 'timeout' => 15]);
     if (is_wp_error($fr)) wp_send_json_error(['message' => $fr->get_error_message()]);
-    $fields    = json_decode(wp_remote_retrieve_body($fr), true)['customFields'] ?? [];
-    $folder_id = '';
-    // Prefer the checker field — its parentId is the Sleep Screener folder
+    $fields  = json_decode(wp_remote_retrieve_body($fr), true)['customFields'] ?? [];
+    $berlin  = ''; $stopbang = '';
     foreach ($fields as $f) {
         $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
-        if ($bare === 'slq_checker_sleep_screener' && !empty($f['parentId'])) {
-            $folder_id = $f['parentId']; break;
-        }
+        if ($bare === 'slq_checker_berlin'   && !empty($f['parentId'])) $berlin   = $f['parentId'];
+        if ($bare === 'slq_checker_stopbang' && !empty($f['parentId'])) $stopbang = $f['parentId'];
     }
-    // Fallback: any known sleep-screener field already in a folder
-    if (!$folder_id) {
+    if (!$berlin || !$stopbang) {
+        // Fallback: match known fields by their folder prefix
         foreach ($fields as $f) {
+            if (empty($f['parentId'])) continue;
             $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
-            if (isset(slq_field_list()[$bare]) && !empty($f['parentId'])) {
-                $folder_id = $f['parentId']; break;
-            }
+            if (!$berlin   && isset(slq_field_list()[$bare]) && slq_field_list()[$bare]['folder'] === 'Berlin Questionnaire')    $berlin   = $f['parentId'];
+            if (!$stopbang && isset(slq_field_list()[$bare]) && slq_field_list()[$bare]['folder'] === 'STOP-Bang Questionnaire') $stopbang = $f['parentId'];
         }
     }
-    if ($folder_id) {
-        update_option('slq_folder_id', $folder_id);
-        wp_send_json_success(['folder_id' => $folder_id]);
-    } else {
-        wp_send_json_error(['message' => 'Checker field not found in any folder — drag it into the Sleep Screener folder in GHL first, then retry.']);
+    if (!$berlin && !$stopbang) {
+        wp_send_json_error(['message' => 'Neither checker field found in a folder — drag each into its matching folder first, then retry.']);
     }
+    if ($berlin)   update_option('slq_folder_id_berlin',   $berlin);
+    if ($stopbang) update_option('slq_folder_id_stopbang', $stopbang);
+    wp_send_json_success(['berlin' => $berlin, 'stopbang' => $stopbang]);
 });
 
-/* ─── Admin AJAX: save folder ID manually ─────────────────── */
+/* ─── Admin AJAX: save folder IDs manually ────────────────── */
 
 add_action('wp_ajax_slq_save_folder_id', function () {
     check_ajax_referer('slq_ghl', 'nonce');
     if (!current_user_can('manage_options')) wp_send_json_error();
-    $folder_id = sanitize_text_field($_POST['folder_id'] ?? '');
-    update_option('slq_folder_id', $folder_id);
-    wp_send_json_success(['folder_id' => $folder_id]);
+    $berlin   = sanitize_text_field($_POST['folder_berlin']   ?? '');
+    $stopbang = sanitize_text_field($_POST['folder_stopbang'] ?? '');
+    update_option('slq_folder_id_berlin',   $berlin);
+    update_option('slq_folder_id_stopbang', $stopbang);
+    wp_send_json_success(['berlin' => $berlin, 'stopbang' => $stopbang]);
 });
 
 /* ─── Admin AJAX: create + move all fields ─────────────────── */
@@ -203,9 +218,9 @@ add_action('wp_ajax_slq_setup_all', function () {
     if (!$api_key || !$location_id) {
         wp_send_json_error(['message' => 'Save your API Key and Location ID first.']); return;
     }
-    $folder_id = get_option('slq_folder_id', '');
-    $base      = 'https://services.leadconnectorhq.com';
-    $headers   = slq_ghl_headers();
+    $folder_ids = slq_get_folder_ids(); // 'Berlin Questionnaire' => id, 'STOP-Bang Questionnaire' => id
+    $base       = 'https://services.leadconnectorhq.com';
+    $headers    = slq_ghl_headers();
 
     // ── Fetch all existing custom fields ──
     $r_list   = wp_remote_get("{$base}/locations/{$location_id}/customFields", ['headers' => $headers, 'timeout' => 15]);
@@ -219,7 +234,8 @@ add_action('wp_ajax_slq_setup_all', function () {
     $created = 0; $skipped = 0; $moved = 0; $errors = [];
 
     foreach (slq_field_list() as $slug => $meta) {
-        $saved_id = get_option('slq_cf_' . $slug, '');
+        $folder_id = $folder_ids[$meta['folder']] ?? '';
+        $saved_id  = get_option('slq_cf_' . $slug, '');
 
         if (!$saved_id && isset($existing[$slug])) {
             $saved_id = $existing[$slug];
@@ -396,51 +412,61 @@ function slq_render_settings() {
             <div class="slq-card">
                 <p class="slq-card-title">GHL Field Setup</p>
 
-                <!-- Folder ID sub-section -->
+                <!-- Folder IDs sub-section -->
                 <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:16px 20px;margin-bottom:22px;">
                     <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
                         <div>
-                            <strong style="font-size:13px;color:#1e293b;">Folder ID</strong>
+                            <strong style="font-size:13px;color:#1e293b;">Folder IDs</strong>
                             <div style="margin-top:8px;font-size:11px;color:#64748b;line-height:1.9;">
                                 <strong style="color:#0f172a;font-size:11.5px;">One-time setup — follow these steps in order:</strong><br>
-                                <strong style="color:#2563eb;">Step 1.</strong> In GHL → Settings → Custom Fields → create a folder named exactly:&nbsp;<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;">Sleep Screener</code><br>
-                                <strong style="color:#2563eb;">Step 2.</strong> Click <strong>+ Create Checker Field</strong> — a temporary marker field will appear in GHL under Additional Info<br>
-                                <strong style="color:#2563eb;">Step 3.</strong> In GHL, drag the checker field into the <strong>Sleep Screener</strong> folder<br>
-                                <strong style="color:#2563eb;">Step 4.</strong> Click <strong>Auto-detect</strong> — folder ID is found and saved automatically<br>
-                                <strong style="color:#2563eb;">Step 5.</strong> Click <strong>Create &amp; Move All Fields</strong> — all <?php echo count(slq_field_list()); ?> fields created and organised into the folder<br>
-                                <strong style="color:#2563eb;">Step 6.</strong> Click <strong>Delete Checker</strong> — temporary marker field removed from GHL
+                                <strong style="color:#2563eb;">Step 1.</strong> In GHL → Settings → Custom Fields → create 2 folders named exactly:&nbsp;<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;">Berlin Questionnaire</code>&nbsp;<code style="background:#e2e8f0;padding:1px 5px;border-radius:3px;">STOP-Bang Questionnaire</code><br>
+                                <strong style="color:#2563eb;">Step 2.</strong> Click <strong>+ Create Checker Fields</strong> — 2 temporary marker fields will appear in GHL under Additional Info<br>
+                                <strong style="color:#2563eb;">Step 3.</strong> In GHL, drag each checker field into its matching folder (names make it obvious)<br>
+                                <strong style="color:#2563eb;">Step 4.</strong> Click <strong>Auto-detect</strong> — folder IDs are found and saved automatically<br>
+                                <strong style="color:#2563eb;">Step 5.</strong> Click <strong>Create &amp; Move All Fields</strong> — all <?php echo count(slq_field_list()); ?> fields created and organised into their folders<br>
+                                <strong style="color:#2563eb;">Step 6.</strong> Click <strong>Delete Checkers</strong> — temporary marker fields removed from GHL
                             </div>
                         </div>
                         <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
                             <button type="button" id="slq-create-checker-btn" class="button button-primary" style="font-size:11px;padding:4px 14px;white-space:nowrap;">
-                                &#43; Create Checker Field
+                                &#43; Create Checker Fields
                             </button>
                             <button type="button" id="slq-detect-folder-btn" class="button" style="font-size:11px;padding:4px 14px;white-space:nowrap;">
                                 &#128269; Auto-detect
                             </button>
                             <button type="button" id="slq-delete-checker-btn" class="button" style="font-size:11px;padding:4px 14px;white-space:nowrap;color:#dc2626;border-color:#fca5a5;">
-                                &#128465; Delete Checker
+                                &#128465; Delete Checkers
                             </button>
                         </div>
                     </div>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;" id="slq-folder-id-grid">
+                        <?php
+                        $saved_fids = slq_get_folder_ids();
+                        foreach ($saved_fids as $fname => $fid):
+                            $fkey = strtolower(str_replace([' ', '-'], '_', $fname));
+                        ?>
                         <label style="font-size:12px;color:#374151;">
-                            Sleep Screener
-                            <input type="text" id="slq-fid-sleep-screener" placeholder="folder ID…"
-                                   value="<?php echo esc_attr(get_option('slq_folder_id', '')); ?>"
+                            <?php echo esc_html($fname); ?>
+                            <input type="text" id="slq-fid-<?php echo esc_attr($fkey); ?>" placeholder="folder ID…"
+                                   value="<?php echo esc_attr($fid); ?>"
                                    style="display:block;width:100%;margin-top:4px;font-family:monospace;font-size:11px;padding:4px 7px;border:1px solid #cbd5e1;border-radius:4px;box-sizing:border-box;">
                         </label>
+                        <?php endforeach; ?>
                     </div>
                     <div style="margin-top:12px;padding:10px 12px;background:#f1f5f9;border-radius:6px;font-size:11px;color:#374151;">
                         <strong>Paste GHL URL to extract ID:</strong>
                         <div style="display:flex;gap:8px;margin-top:6px;">
                             <input type="text" id="slq-folder-url-input" placeholder="Paste GHL URL here (e.g. …?folderId=AbCdEf…)" style="flex:1;font-size:11px;padding:4px 7px;border:1px solid #cbd5e1;border-radius:4px;">
+                            <select id="slq-folder-url-target" style="font-size:11px;padding:4px 7px;border:1px solid #cbd5e1;border-radius:4px;">
+                                <option value="berlin_questionnaire">Berlin Questionnaire</option>
+                                <option value="stop_bang_questionnaire">STOP-Bang Questionnaire</option>
+                            </select>
                             <button type="button" id="slq-folder-url-btn" class="button" style="font-size:11px;padding:3px 10px;">Extract</button>
                         </div>
                     </div>
                     <div style="display:flex;align-items:center;gap:10px;margin-top:12px;">
                         <button type="button" id="slq-save-folder-id-btn" class="button button-secondary" style="font-size:12px;padding:4px 14px;">
-                            &#10003; Save Folder ID
+                            &#10003; Save Folder IDs
                         </button>
                         <span id="slq-folder-status" style="font-size:11px;color:#6b7280;"></span>
                     </div>
@@ -531,12 +557,14 @@ function slq_render_settings() {
 
             var fst = document.getElementById('slq-folder-status');
 
-            // Save Folder ID
+            // Save Folder IDs
             document.getElementById('slq-save-folder-id-btn').addEventListener('click', function() {
                 var btn = this;
-                var id = document.getElementById('slq-fid-sleep-screener').value.trim();
                 btn.disabled = true; fst.textContent = 'Saving…'; fst.style.color = '#6b7280';
-                ghlPost('slq_save_folder_id', { folder_id: id }, function(res) {
+                ghlPost('slq_save_folder_id', {
+                    folder_berlin:   document.getElementById('slq-fid-berlin_questionnaire').value.trim(),
+                    folder_stopbang: document.getElementById('slq-fid-stop_bang_questionnaire').value.trim(),
+                }, function(res) {
                     btn.disabled = false;
                     fst.textContent = res.success ? '✓ Saved' : '✗ ' + (res.data && res.data.message || 'Error');
                     fst.style.color  = res.success ? '#16a34a' : '#dc2626';
@@ -545,51 +573,58 @@ function slq_render_settings() {
 
             // URL Extractor
             document.getElementById('slq-folder-url-btn').addEventListener('click', function() {
-                var url = document.getElementById('slq-folder-url-input').value.trim();
+                var url    = document.getElementById('slq-folder-url-input').value.trim();
+                var target = document.getElementById('slq-folder-url-target').value;
                 var m = url.match(/[?#&\/]folderId[=\/]([A-Za-z0-9_-]+)/i) ||
                         url.match(/folder[_-]?id[=:\/]([A-Za-z0-9_-]+)/i) ||
                         url.match(/\/([A-Za-z0-9]{15,25})(?:[/?#]|$)/);
                 if (!m) { fst.textContent = '✗ No folder ID found in URL'; fst.style.color = '#dc2626'; return; }
-                document.getElementById('slq-fid-sleep-screener').value = m[1];
-                fst.textContent = '✓ Extracted: ' + m[1]; fst.style.color = '#16a34a';
+                var el = document.getElementById('slq-fid-' + target);
+                if (el) { el.value = m[1]; fst.textContent = '✓ Extracted: ' + m[1]; fst.style.color = '#16a34a'; }
                 document.getElementById('slq-folder-url-input').value = '';
             });
 
-            // Create Checker Field
+            // Create Checker Fields
             document.getElementById('slq-create-checker-btn').addEventListener('click', function() {
                 var btn = this;
-                btn.disabled = true; fst.textContent = 'Creating checker field…'; fst.style.color = '#6b7280';
+                btn.disabled = true; fst.textContent = 'Creating checker fields…'; fst.style.color = '#6b7280';
                 ghlPost('slq_create_checker_field', {}, function(res) {
-                    btn.disabled = false;
-                    fst.textContent = res.success ? '✓ ' + res.data.message : '✗ ' + (res.data && res.data.message || 'Error');
-                    fst.style.color = res.success ? '#16a34a' : '#dc2626';
-                });
-            });
-
-            // Delete Checker Field
-            document.getElementById('slq-delete-checker-btn').addEventListener('click', function() {
-                var btn = this;
-                btn.disabled = true; fst.textContent = 'Deleting checker field…'; fst.style.color = '#6b7280';
-                ghlPost('slq_delete_checker_field', {}, function(res) {
                     btn.disabled = false;
                     if (res.success) {
                         var d = res.data;
-                        fst.textContent = d.deleted.length ? '✓ Deleted ' + d.deleted.length + ' checker field(s).' + (d.errors.length ? ' Errors: ' + d.errors.join(', ') : '') : '⚠ Checker field not found in GHL (may already be deleted).';
+                        fst.textContent = '✓ Created ' + d.created.length + ' checker field(s) in GHL. Drag each into its matching folder, then click Auto-detect.' + (d.errors.length ? ' Errors: ' + d.errors.join(', ') : '');
                         fst.style.color = d.errors.length ? '#d97706' : '#16a34a';
                     } else { fst.textContent = '✗ ' + (res.data && res.data.message || 'Error'); fst.style.color = '#dc2626'; }
                 });
             });
 
-            // Auto-detect folder ID
+            // Delete Checker Fields
+            document.getElementById('slq-delete-checker-btn').addEventListener('click', function() {
+                var btn = this;
+                btn.disabled = true; fst.textContent = 'Deleting checker fields…'; fst.style.color = '#6b7280';
+                ghlPost('slq_delete_checker_field', {}, function(res) {
+                    btn.disabled = false;
+                    if (res.success) {
+                        var d = res.data;
+                        fst.textContent = d.deleted.length ? '✓ Deleted ' + d.deleted.length + ' checker field(s).' + (d.errors.length ? ' Errors: ' + d.errors.join(', ') : '') : '⚠ Checker fields not found in GHL (may already be deleted).';
+                        fst.style.color = d.errors.length ? '#d97706' : '#16a34a';
+                    } else { fst.textContent = '✗ ' + (res.data && res.data.message || 'Error'); fst.style.color = '#dc2626'; }
+                });
+            });
+
+            // Auto-detect folder IDs
             document.getElementById('slq-detect-folder-btn').addEventListener('click', function() {
                 var btn = this;
                 btn.disabled = true; fst.textContent = 'Detecting…'; fst.style.color = '#6b7280';
                 ghlPost('slq_detect_folder_id', {}, function(res) {
                     btn.disabled = false;
                     if (res.success) {
-                        document.getElementById('slq-fid-sleep-screener').value = res.data.folder_id;
-                        fst.textContent = '✓ Folder ID detected and saved: ' + res.data.folder_id;
-                        fst.style.color = '#16a34a';
+                        var d = res.data;
+                        if (d.berlin)   document.getElementById('slq-fid-berlin_questionnaire').value   = d.berlin;
+                        if (d.stopbang) document.getElementById('slq-fid-stop_bang_questionnaire').value = d.stopbang;
+                        var found = (d.berlin ? 1 : 0) + (d.stopbang ? 1 : 0);
+                        fst.textContent = '✓ Detected ' + found + ' of 2 folder IDs — saved automatically.';
+                        fst.style.color = found === 2 ? '#16a34a' : '#d97706';
                     } else { fst.textContent = '✗ ' + (res.data && res.data.message || 'Error'); fst.style.color = '#dc2626'; }
                 });
             });
