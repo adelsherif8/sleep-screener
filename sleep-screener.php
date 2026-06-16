@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.9
+ * Version:     1.2.0
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.9');
+define('SLQ_VERSION',     '1.2.0');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));

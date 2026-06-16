@@ -316,7 +316,13 @@
 
   /* ── Submit ── */
   function submitForm() {
-    if (iti && phoneInput) phoneInput.value = iti.getNumber();
+    if (iti && phoneInput) {
+      var dialCode = iti.getSelectedCountryData().dialCode || '';
+      var raw = phoneInput.value.replace(/[^\d]/g, ''); // digits only
+      if (dialCode && raw.indexOf(dialCode) === 0) raw = raw.slice(dialCode.length); // strip if user typed country code
+      if (raw.charAt(0) === '0') raw = raw.slice(1); // strip national trunk prefix
+      phoneInput.value = dialCode ? '+' + dialCode + raw : raw;
+    }
     var data  = collectData();
     var score = scoreData(data);
 
