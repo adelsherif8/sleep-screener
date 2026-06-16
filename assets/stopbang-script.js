@@ -36,6 +36,10 @@
       },
       utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/js/utils.js',
     });
+    phoneInput.addEventListener('change', function () {
+      var val = phoneInput.value.trim();
+      if (val && iti) iti.setNumber(val);
+    });
   }
 
   /* ── Radio selection feedback ── */

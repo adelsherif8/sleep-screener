@@ -35,6 +35,13 @@
       },
       utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/js/utils.js',
     });
+    // Handle browser autofill — autofill fires 'change', not 'input'
+    // setNumber() parses the full number, sets the correct country flag,
+    // and strips the country code from the visible input automatically.
+    phoneInput.addEventListener('change', function () {
+      var val = phoneInput.value.trim();
+      if (val && iti) iti.setNumber(val);
+    });
   }
 
   /* ── Style radio options with click feedback ── */
