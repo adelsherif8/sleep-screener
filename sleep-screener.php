@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.6
+ * Version:     1.1.7
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.6');
+define('SLQ_VERSION',     '1.1.7');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -747,8 +747,10 @@ function slq_render_settings() {
 /* ═══════════════════════════════════════════════════════════ */
 
 add_shortcode('berlin_questionnaire', function () {
+    wp_enqueue_style('intl-tel-input', 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/css/intlTelInput.css', [], '23');
+    wp_enqueue_script('intl-tel-input', 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/js/intlTelInput.min.js', [], '23', true);
     wp_enqueue_style('slq-berlin',  SLQ_URL . 'assets/berlin-style.css',  [], SLQ_VERSION);
-    wp_enqueue_script('slq-berlin', SLQ_URL . 'assets/berlin-script.js', [], SLQ_VERSION, true);
+    wp_enqueue_script('slq-berlin', SLQ_URL . 'assets/berlin-script.js', ['intl-tel-input'], SLQ_VERSION, true);
     wp_localize_script('slq-berlin', 'BSQ', [
         'ajax_url'    => admin_url('admin-ajax.php'),
         'nonce'       => wp_create_nonce('bsq_submit'),
@@ -874,8 +876,10 @@ function slq_berlin_ghl(array $d, array $score): void {
 /* ═══════════════════════════════════════════════════════════ */
 
 add_shortcode('stopbang_questionnaire', function () {
+    wp_enqueue_style('intl-tel-input', 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/css/intlTelInput.css', [], '23');
+    wp_enqueue_script('intl-tel-input', 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/js/intlTelInput.min.js', [], '23', true);
     wp_enqueue_style('slq-stopbang',  SLQ_URL . 'assets/stopbang-style.css',  [], SLQ_VERSION);
-    wp_enqueue_script('slq-stopbang', SLQ_URL . 'assets/stopbang-script.js', [], SLQ_VERSION, true);
+    wp_enqueue_script('slq-stopbang', SLQ_URL . 'assets/stopbang-script.js', ['intl-tel-input'], SLQ_VERSION, true);
     wp_localize_script('slq-stopbang', 'SBQ', [
         'ajax_url'    => admin_url('admin-ajax.php'),
         'nonce'       => wp_create_nonce('sbq_submit'),

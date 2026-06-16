@@ -22,6 +22,17 @@
 
   if (!wrap) return;
 
+  /* ── Phone — intl-tel-input ── */
+  var phoneInput = document.getElementById('sbq-phone');
+  var iti = null;
+  if (phoneInput && window.intlTelInput) {
+    iti = window.intlTelInput(phoneInput, {
+      initialCountry: 'ca',
+      utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/js/utils.js',
+      separateDialCode: true,
+    });
+  }
+
   /* ── Radio selection feedback ── */
   wrap.addEventListener('change', function (e) {
     if (e.target.type !== 'radio') return;
@@ -305,6 +316,7 @@
 
   /* ── Submit ── */
   function submitForm() {
+    if (iti && phoneInput) phoneInput.value = iti.getNumber();
     var data  = collectData();
     var score = scoreData(data);
 
