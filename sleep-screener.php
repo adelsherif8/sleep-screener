@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.5
+ * Version:     1.1.6
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.5');
+define('SLQ_VERSION',     '1.1.6');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -357,6 +357,7 @@ function slq_render_settings() {
         update_option('slq_ghl_location_id', sanitize_text_field($_POST['slq_ghl_location_id'] ?? ''));
         update_option('slq_booking_url',     sanitize_text_field($_POST['slq_booking_url']     ?? '/thank-you'));
         update_option('slq_primary_color',   sanitize_hex_color($_POST['slq_primary_color']    ?? '#2d6a5a') ?: '#2d6a5a');
+        update_option('slq_notify_email',    sanitize_email($_POST['slq_notify_email']          ?? ''));
         foreach (array_keys(slq_field_list()) as $key) {
             update_option('slq_cf_' . $key, sanitize_text_field($_POST['slq_cf_' . $key] ?? ''));
         }
@@ -1022,7 +1023,144 @@ add_action('admin_post_slq_export_csv', function () {
 
 function slq_render_entries(): void {
     global $wpdb;
-    $table    = $wpdb->prefix . 'slq_entries';
+    $table = $wpdb->prefix . 'slq_entries';
+
+    $risk_colors = [
+        'High Risk' => '#dc2626', 'High' => '#dc2626',
+        'Intermediate' => '#d97706',
+        'Low Risk' => '#16a34a', 'Low' => '#16a34a',
+    ];
+
+    /* ── Detail view ── */
+    $entry_id = intval($_GET['entry_id'] ?? 0);
+    if ($entry_id) {
+        $e = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $entry_id));
+        if (!$e) { echo '<div class="wrap"><p>Entry not found.</p></div>'; return; }
+
+        $fd    = json_decode($e->form_data,  true) ?? [];
+        $sd    = json_decode($e->score_data, true) ?? [];
+        $color = $risk_colors[$e->risk_level] ?? '#64748b';
+        $back  = admin_url('options-general.php?page=slq-entries');
+        $del   = wp_nonce_url(admin_url('admin-post.php?action=slq_delete_entry&entry_id=' . $e->id), 'slq_delete_entry');
+
+        $berlin_labels = [
+            'age' => 'Age', 'gender' => 'Gender', 'height_display' => 'Height', 'weight_lbs' => 'Weight (lbs)', 'bmi' => 'BMI',
+            'q2'  => 'Do you snore?',
+            'q3'  => 'Snoring volume',
+            'q4'  => 'Snoring frequency',
+            'q5'  => 'Does snoring bother others?',
+            'q6'  => 'Observed stopping breathing',
+            'q7'  => 'Tired / fatigued after sleep',
+            'q8'  => 'Tired / fatigued during the day',
+            'q9'  => 'Ever fallen asleep while driving?',
+            'q10' => 'High blood pressure?',
+        ];
+        $stopbang_labels = [
+            'age' => 'Age', 'gender' => 'Gender', 'height_display' => 'Height', 'weight_display' => 'Weight', 'bmi' => 'BMI',
+            'snoring'    => 'Snoring loudly?',
+            'tired'      => 'Often tired / fatigued?',
+            'observed'   => 'Observed stopping breathing?',
+            'pressure'   => 'High blood pressure?',
+            'neck_large' => 'Neck circumference ≥ 16″?',
+        ];
+        $score_labels_berlin = [
+            'risk_level'     => 'Risk Level',
+            'pos_categories' => 'Positive Categories (of 3)',
+            'cat1_positive'  => 'Category 1 Positive (Snoring & Breathing)',
+            'cat2_positive'  => 'Category 2 Positive (Fatigue & Alertness)',
+            'cat3_positive'  => 'Category 3 Positive (BP / BMI)',
+            'cat1_score'     => 'Category 1 Score',
+            'cat2_score'     => 'Category 2 Score',
+            'bmi'            => 'Calculated BMI',
+        ];
+        $score_labels_stopbang = [
+            'risk'       => 'Risk Level',
+            'total'      => 'Total Score (out of 8)',
+            'stop_score' => 'STOP Score (out of 4)',
+            'bang_score' => 'BANG Score (out of 4)',
+            'bmi'        => 'Calculated BMI',
+            's' => 'S — Snoring', 't' => 'T — Tired', 'o' => 'O — Observed', 'p' => 'P — Pressure',
+            'b' => 'B — BMI > 35', 'a' => 'A — Age > 50', 'n' => 'N — Neck ≥ 16″', 'g' => 'G — Gender (Male)',
+        ];
+
+        $field_labels  = $e->form === 'berlin' ? $berlin_labels  : $stopbang_labels;
+        $score_labels  = $e->form === 'berlin' ? $score_labels_berlin : $score_labels_stopbang;
+
+        function slq_fmt($v): string {
+            if (is_bool($v)) return $v ? 'Yes' : 'No';
+            if ($v === 1 || $v === '1') return 'Yes';
+            if ($v === 0 || $v === '0') return 'No';
+            return str_replace('_', ' ', ucfirst((string)$v));
+        }
+        ?>
+        <style>
+        .slq-detail-card{background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:24px 28px;margin-bottom:20px}
+        .slq-detail-card h2{margin:0 0 16px;font-size:14px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748b;padding-bottom:12px;border-bottom:1px solid #f1f5f9}
+        .slq-field-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+        .slq-field{background:#f8fafc;border-radius:7px;padding:10px 14px}
+        .slq-field-label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-bottom:3px}
+        .slq-field-value{font-size:14px;color:#1e293b;font-weight:500}
+        </style>
+        <div class="wrap" style="max-width:900px">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+                <a href="<?php echo esc_url($back); ?>" class="button">&larr; All Entries</a>
+                <h1 style="margin:0;font-size:20px"><?php echo esc_html($e->full_name); ?></h1>
+                <span style="background:<?php echo $e->form === 'berlin' ? '#eff6ff' : '#faf5ff'; ?>;color:<?php echo $e->form === 'berlin' ? '#1d4ed8' : '#7e22ce'; ?>;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase"><?php echo esc_html($e->form); ?></span>
+                <span style="color:<?php echo $color; ?>;font-weight:700;font-size:14px"><?php echo esc_html($e->risk_level); ?></span>
+                <span style="color:#94a3b8;font-size:13px;margin-left:auto"><?php echo esc_html(date('M j, Y g:i a', strtotime($e->submitted_at))); ?></span>
+            </div>
+
+            <!-- Contact -->
+            <div class="slq-detail-card">
+                <h2>Contact</h2>
+                <div class="slq-field-grid">
+                    <div class="slq-field"><div class="slq-field-label">Name</div><div class="slq-field-value"><?php echo esc_html($e->full_name); ?></div></div>
+                    <div class="slq-field"><div class="slq-field-label">Email</div><div class="slq-field-value"><a href="mailto:<?php echo esc_attr($e->email); ?>"><?php echo esc_html($e->email); ?></a></div></div>
+                    <div class="slq-field"><div class="slq-field-label">Phone</div><div class="slq-field-value"><?php echo esc_html($e->phone); ?></div></div>
+                </div>
+            </div>
+
+            <!-- Questionnaire Answers -->
+            <div class="slq-detail-card">
+                <h2>Questionnaire Answers</h2>
+                <div class="slq-field-grid">
+                <?php foreach ($field_labels as $key => $label):
+                    $val = $fd[$key] ?? null;
+                    if ($val === null || $val === '') continue;
+                ?>
+                    <div class="slq-field">
+                        <div class="slq-field-label"><?php echo esc_html($label); ?></div>
+                        <div class="slq-field-value"><?php echo esc_html(slq_fmt($val)); ?></div>
+                    </div>
+                <?php endforeach; ?>
+                </div>
+            </div>
+
+            <!-- Score -->
+            <div class="slq-detail-card">
+                <h2>Score &amp; Risk Assessment</h2>
+                <div class="slq-field-grid">
+                <?php foreach ($score_labels as $key => $label):
+                    $val = $sd[$key] ?? null;
+                    if ($val === null || $val === '') continue;
+                ?>
+                    <div class="slq-field">
+                        <div class="slq-field-label"><?php echo esc_html($label); ?></div>
+                        <div class="slq-field-value" <?php if ($key === 'risk_level' || $key === 'risk') echo 'style="color:' . esc_attr($color) . ';font-weight:700"'; ?>>
+                            <?php echo esc_html(slq_fmt($val)); ?>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+                </div>
+            </div>
+
+            <a href="<?php echo esc_url($del); ?>" class="button" style="color:#dc2626;border-color:#fca5a5" onclick="return confirm('Delete this entry?')">Delete Entry</a>
+        </div>
+        <?php
+        return;
+    }
+
+    /* ── List view ── */
     $per_page = 25;
     $page     = max(1, intval($_GET['paged'] ?? 1));
     $filter   = sanitize_text_field($_GET['form_filter'] ?? '');
@@ -1040,12 +1178,6 @@ function slq_render_entries(): void {
     $offset  = ($page - 1) * $per_page;
     $entries = $wpdb->get_results("SELECT * FROM {$table} {$where} ORDER BY submitted_at DESC LIMIT {$per_page} OFFSET {$offset}");
     $pages   = max(1, ceil($total / $per_page));
-
-    $risk_colors = [
-        'High Risk'    => '#dc2626', 'High'         => '#dc2626',
-        'Intermediate' => '#d97706',
-        'Low Risk'     => '#16a34a', 'Low'          => '#16a34a',
-    ];
     ?>
     <div class="wrap" style="max-width:1100px">
         <h1 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
@@ -1063,7 +1195,6 @@ function slq_render_entries(): void {
             <div class="notice notice-success is-dismissible"><p>Entry deleted.</p></div>
         <?php endif; ?>
 
-        <!-- Filters -->
         <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
             <input type="hidden" name="page" value="slq-entries">
             <input type="text" name="s" placeholder="Search name / email / phone…" value="<?php echo esc_attr($search); ?>" style="width:240px">
@@ -1091,32 +1222,33 @@ function slq_render_entries(): void {
                     <th>Email</th>
                     <th style="width:130px">Phone</th>
                     <th style="width:130px">Risk Level</th>
-                    <th style="width:70px"></th>
+                    <th style="width:90px"></th>
                 </tr>
             </thead>
             <tbody>
             <?php foreach ($entries as $e):
-                $color = $risk_colors[$e->risk_level] ?? '#64748b';
-                $delete_url = wp_nonce_url(
-                    admin_url('admin-post.php?action=slq_delete_entry&entry_id=' . $e->id),
-                    'slq_delete_entry'
-                );
+                $color      = $risk_colors[$e->risk_level] ?? '#64748b';
+                $view_url   = admin_url('options-general.php?page=slq-entries&entry_id=' . $e->id);
+                $delete_url = wp_nonce_url(admin_url('admin-post.php?action=slq_delete_entry&entry_id=' . $e->id), 'slq_delete_entry');
             ?>
                 <tr>
                     <td style="color:#94a3b8"><?php echo $e->id; ?></td>
                     <td style="font-size:12px;color:#475569"><?php echo esc_html(date('M j, Y g:i a', strtotime($e->submitted_at))); ?></td>
                     <td><span style="background:<?php echo $e->form === 'berlin' ? '#eff6ff' : '#faf5ff'; ?>;color:<?php echo $e->form === 'berlin' ? '#1d4ed8' : '#7e22ce'; ?>;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase"><?php echo esc_html($e->form); ?></span></td>
-                    <td style="font-weight:500"><?php echo esc_html($e->full_name); ?></td>
+                    <td style="font-weight:500"><a href="<?php echo esc_url($view_url); ?>"><?php echo esc_html($e->full_name); ?></a></td>
                     <td><a href="mailto:<?php echo esc_attr($e->email); ?>"><?php echo esc_html($e->email); ?></a></td>
                     <td><?php echo esc_html($e->phone); ?></td>
                     <td><span style="color:<?php echo $color; ?>;font-weight:700;font-size:12px"><?php echo esc_html($e->risk_level); ?></span></td>
-                    <td><a href="<?php echo esc_url($delete_url); ?>" style="color:#dc2626;font-size:12px" onclick="return confirm('Delete this entry?')">Delete</a></td>
+                    <td>
+                        <a href="<?php echo esc_url($view_url); ?>" style="font-size:12px">View</a>
+                        &nbsp;|&nbsp;
+                        <a href="<?php echo esc_url($delete_url); ?>" style="color:#dc2626;font-size:12px" onclick="return confirm('Delete this entry?')">Delete</a>
+                    </td>
                 </tr>
             <?php endforeach; ?>
             </tbody>
         </table>
 
-        <!-- Pagination -->
         <?php if ($pages > 1): ?>
         <div style="margin-top:16px;display:flex;gap:6px;align-items:center">
             <?php for ($i = 1; $i <= $pages; $i++):
