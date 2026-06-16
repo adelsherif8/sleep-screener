@@ -26,17 +26,14 @@
   var iti = null;
   if (phoneInput && window.intlTelInput) {
     iti = window.intlTelInput(phoneInput, {
-      initialCountry: 'us',
+      initialCountry: 'auto',
+      geoIpLookup: function (cb) {
+        fetch('https://ipapi.co/json/')
+          .then(function (r) { return r.json(); })
+          .then(function (d) { cb(d.country_code || 'us'); })
+          .catch(function () { cb('us'); });
+      },
       utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/js/utils.js',
-    });
-    phoneInput.addEventListener('input', function () {
-      var dialCode = iti.getSelectedCountryData().dialCode || '';
-      var raw = phoneInput.value.replace(/[^\d]/g, '');
-      if (dialCode && raw.indexOf(dialCode) === 0) raw = raw.slice(dialCode.length);
-      if (raw.charAt(0) === '0') raw = raw.slice(1);
-      if (raw !== phoneInput.value) {
-        phoneInput.value = raw;
-      }
     });
   }
 
