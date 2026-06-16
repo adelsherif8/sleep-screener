@@ -26,7 +26,7 @@
   var iti = null;
   if (phoneInput && window.intlTelInput) {
     iti = window.intlTelInput(phoneInput, {
-      initialCountry: 'ca',
+      initialCountry: 'us',
       utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/js/utils.js',
     });
     phoneInput.addEventListener('input', function () {
