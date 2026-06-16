@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.2.2
+ * Version:     1.2.4
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.2.2');
+define('SLQ_VERSION',     '1.2.4');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -156,20 +156,29 @@ add_action('wp_ajax_slq_test_ghl', function () {
         ]);
         $field_count = 0;
         $slq_fields  = 0;
+        $missing     = [];
         if (!is_wp_error($fr) && wp_remote_retrieve_response_code($fr) < 400) {
-            $fields = json_decode(wp_remote_retrieve_body($fr), true)['customFields'] ?? [];
+            $fields    = json_decode(wp_remote_retrieve_body($fr), true)['customFields'] ?? [];
             $field_count = count($fields);
-            $known = array_keys(slq_field_list());
+            $known_map = slq_field_list();
+            $known     = array_keys($known_map);
+            $found     = [];
             foreach ($fields as $f) {
                 $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
-                if (in_array($bare, $known, true)) $slq_fields++;
+                if (in_array($bare, $known, true)) { $slq_fields++; $found[] = $bare; }
+            }
+            foreach ($known as $k) {
+                if (!in_array($k, $found, true)) {
+                    $missing[] = $known_map[$k]['label'] . ' (' . $k . ')';
+                }
             }
         }
         wp_send_json_success([
-            'location' => $body['location']['name'] ?? 'Unknown',
-            'fields_total' => $field_count,
-            'fields_mapped' => $slq_fields,
+            'location'        => $body['location']['name'] ?? 'Unknown',
+            'fields_total'    => $field_count,
+            'fields_mapped'   => $slq_fields,
             'fields_expected' => count(slq_field_list()),
+            'missing'         => $missing,
         ]);
     }
     wp_send_json_error(['message' => 'GHL returned HTTP ' . $code . ': ' . ($body['message'] ?? 'Unknown error')]);
@@ -727,7 +736,7 @@ function slq_render_settings() {
                         res.style.color = d.fields_mapped >= d.fields_expected ? '#16a34a' : '#d97706';
                         res.textContent = '✓ Connected to "' + d.location + '" — '
                             + d.fields_mapped + '/' + d.fields_expected + ' screener fields found in GHL'
-                            + (d.fields_mapped < d.fields_expected ? ' (run Create & Move All Fields to add missing ones)' : '');
+                            + (d.missing && d.missing.length ? ' — Missing: ' + d.missing.join(', ') : '');
                     } else {
                         res.style.color = '#dc2626';
                         res.textContent = '✗ ' + (r.data && r.data.message || 'Error');

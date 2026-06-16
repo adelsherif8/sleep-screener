@@ -228,13 +228,10 @@
   display: block;
 }
 #bsq-wrap .iti input[type="tel"] {
-  padding-left: 95px;
+  padding-left: 56px;
 }
 #bsq-wrap .iti__flag-container {
   position: absolute;
-}
-#bsq-wrap .iti__selected-dial-code {
-  font-size: 0.9rem;
 }
 .iti__dropdown-content {
   z-index: 99999 !important;
