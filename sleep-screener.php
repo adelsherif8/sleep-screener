@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.8
+ * Version:     1.1.9
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.8');
+define('SLQ_VERSION',     '1.1.9');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -151,6 +151,36 @@ function slq_ghl_headers(): array {
         'Version'       => '2021-07-28',
         'Content-Type'  => 'application/json',
     ];
+}
+
+/* ─── Helper: resolve GHL custom field ID by key ──────────── */
+
+function slq_resolve_field_id(string $key): string {
+    $saved = get_option('slq_cf_' . $key, '');
+    if ($saved) return $saved;
+
+    $map = get_transient('slq_ghl_field_map');
+    if ($map === false) {
+        $api_key     = get_option('slq_ghl_api_key', '');
+        $location_id = get_option('slq_ghl_location_id', '');
+        if (!$api_key || !$location_id) return '';
+        $r = wp_remote_get('https://services.leadconnectorhq.com/locations/' . $location_id . '/customFields', [
+            'headers' => slq_ghl_headers(),
+            'timeout' => 10,
+        ]);
+        $map = [];
+        if (!is_wp_error($r) && wp_remote_retrieve_response_code($r) < 400) {
+            foreach (json_decode(wp_remote_retrieve_body($r), true)['customFields'] ?? [] as $f) {
+                $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
+                if ($bare && !empty($f['id'])) {
+                    $map[$bare] = $f['id'];
+                    update_option('slq_cf_' . $bare, $f['id']);
+                }
+            }
+        }
+        set_transient('slq_ghl_field_map', $map, HOUR_IN_SECONDS);
+    }
+    return $map[$key] ?? '';
 }
 
 /* ─── Helper: get both stored folder IDs ──────────────────── */
@@ -844,8 +874,8 @@ function slq_berlin_ghl(array $d, array $score): void {
 
     $custom_fields = [];
     foreach ($field_map as $key => $value) {
-        $fid = get_option('slq_cf_' . $key, '');
-        if ($fid && $value !== '') $custom_fields[] = ['id' => $fid, 'field_value' => $value];
+        $fid = slq_resolve_field_id($key);
+        if ($fid && $value !== '') $custom_fields[] = ['id' => $fid, 'field_value' => (string)$value];
     }
 
     $payload = [
@@ -968,8 +998,8 @@ function slq_stopbang_ghl(array $d, array $score): void {
 
     $custom_fields = [];
     foreach ($field_map as $key => $value) {
-        $fid = get_option('slq_cf_' . $key, '');
-        if ($fid && $value !== '') $custom_fields[] = ['id' => $fid, 'field_value' => $value];
+        $fid = slq_resolve_field_id($key);
+        if ($fid && $value !== '') $custom_fields[] = ['id' => $fid, 'field_value' => (string)$value];
     }
 
     $payload = [
