@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.2.5
+ * Version:     1.2.6
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.2.5');
+define('SLQ_VERSION',     '1.2.6');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -211,13 +211,13 @@ function slq_resolve_field_id(string $key): string {
     $saved = get_option('slq_cf_' . $key, '');
     if ($saved) return $saved;
 
-    // Try cached map
+    // Try cached map (keyed by our internal slug)
     $map = get_transient('slq_ghl_field_map');
-    if (is_array($map) && !empty($map)) {
-        return $map[$key] ?? '';
+    if (is_array($map) && isset($map[$key])) {
+        return $map[$key];
     }
 
-    // Fetch from GHL — only runs once per hour and only when options not set
+    // Fetch from GHL — only runs once per hour
     $api_key     = get_option('slq_ghl_api_key', '');
     $location_id = get_option('slq_ghl_location_id', '');
     if (!$api_key || !$location_id) return '';
@@ -232,20 +232,36 @@ function slq_resolve_field_id(string $key): string {
         return '';
     }
     if (wp_remote_retrieve_response_code($r) >= 400) {
-        error_log('[SLQ] Field map fetch HTTP ' . wp_remote_retrieve_response_code($r) . ' — check API key has Custom Fields: Read scope');
+        error_log('[SLQ] Field map fetch HTTP ' . wp_remote_retrieve_response_code($r) . ' — check API key');
         return '';
     }
 
-    $map = [];
-    foreach (json_decode(wp_remote_retrieve_body($r), true)['customFields'] ?? [] as $f) {
+    $ghl_fields = json_decode(wp_remote_retrieve_body($r), true)['customFields'] ?? [];
+
+    // Build lookup tables: by GHL fieldKey (bare) and by lowercase label
+    $by_key   = [];
+    $by_label = [];
+    foreach ($ghl_fields as $f) {
         $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
-        if ($bare && !empty($f['id'])) {
-            $map[$bare] = $f['id'];
-            update_option('slq_cf_' . $bare, $f['id']);
+        if ($bare && !empty($f['id']))          $by_key[$bare]   = $f['id'];
+        $lbl = strtolower(trim($f['name'] ?? ''));
+        if ($lbl && !empty($f['id']))           $by_label[$lbl]  = $f['id'];
+    }
+
+    // Map our internal slugs → IDs: try fieldKey match first, then label match
+    $map = [];
+    foreach (slq_field_list() as $slug => $meta) {
+        if (isset($by_key[$slug])) {
+            $map[$slug] = $by_key[$slug];
+        } elseif (isset($by_label[strtolower($meta['label'])])) {
+            $map[$slug] = $by_label[strtolower($meta['label'])];
+        }
+        // Persist individually so future requests skip the API call
+        if (isset($map[$slug])) {
+            update_option('slq_cf_' . $slug, $map[$slug]);
         }
     }
 
-    // Only cache if we actually got fields — don't cache empty on failure
     if (!empty($map)) {
         set_transient('slq_ghl_field_map', $map, HOUR_IN_SECONDS);
     }
