@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.2
+ * Version:     1.1.3
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.2');
+define('SLQ_VERSION',     '1.1.3');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
@@ -714,7 +714,7 @@ function slq_berlin_submit() {
     $raw = isset($_POST['data']) && is_array($_POST['data']) ? $_POST['data'] : [];
     $d   = array_map('sanitize_text_field', $raw);
     if (!empty($d['_hp']))                     { wp_send_json_success([]); return; }
-    if (intval($d['_elapsed'] ?? 0) < 8)       { wp_send_json_success([]); return; }
+    if (intval($d['_elapsed'] ?? 0) < 3)        { wp_send_json_success([]); return; }
     $score = slq_berlin_score($d);
     if (get_option('slq_ghl_api_key') && get_option('slq_ghl_location_id')) {
         slq_berlin_ghl($d, $score);
@@ -801,12 +801,16 @@ function slq_berlin_ghl(array $d, array $score): void {
     ];
     if (!empty($custom_fields)) $payload['customFields'] = $custom_fields;
 
-    wp_remote_post('https://services.leadconnectorhq.com/contacts/', [
-        'headers'  => ['Authorization' => 'Bearer ' . $api_key, 'Version' => '2021-07-28', 'Content-Type' => 'application/json'],
-        'body'     => wp_json_encode($payload),
-        'timeout'  => 15,
-        'blocking' => false,
+    $resp = wp_remote_post('https://services.leadconnectorhq.com/contacts/', [
+        'headers' => ['Authorization' => 'Bearer ' . $api_key, 'Version' => '2021-07-28', 'Content-Type' => 'application/json'],
+        'body'    => wp_json_encode($payload),
+        'timeout' => 15,
     ]);
+    if (is_wp_error($resp)) {
+        error_log('[SLQ Berlin] GHL error: ' . $resp->get_error_message());
+    } elseif (wp_remote_retrieve_response_code($resp) >= 400) {
+        error_log('[SLQ Berlin] GHL HTTP ' . wp_remote_retrieve_response_code($resp) . ': ' . wp_remote_retrieve_body($resp));
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════ */
@@ -836,7 +840,7 @@ function slq_stopbang_submit() {
     $raw = isset($_POST['data']) && is_array($_POST['data']) ? $_POST['data'] : [];
     $d   = array_map('sanitize_text_field', $raw);
     if (!empty($d['_hp']))               { wp_send_json_success([]); return; }
-    if (intval($d['_elapsed'] ?? 0) < 5) { wp_send_json_success([]); return; }
+    if (intval($d['_elapsed'] ?? 0) < 3) { wp_send_json_success([]); return; }
     $score = slq_stopbang_score($d);
     if (get_option('slq_ghl_api_key') && get_option('slq_ghl_location_id')) {
         slq_stopbang_ghl($d, $score);
@@ -918,12 +922,16 @@ function slq_stopbang_ghl(array $d, array $score): void {
     ];
     if (!empty($custom_fields)) $payload['customFields'] = $custom_fields;
 
-    wp_remote_post('https://services.leadconnectorhq.com/contacts/', [
-        'headers'  => ['Authorization' => 'Bearer ' . $api_key, 'Version' => '2021-07-28', 'Content-Type' => 'application/json'],
-        'body'     => wp_json_encode($payload),
-        'timeout'  => 15,
-        'blocking' => false,
+    $resp = wp_remote_post('https://services.leadconnectorhq.com/contacts/', [
+        'headers' => ['Authorization' => 'Bearer ' . $api_key, 'Version' => '2021-07-28', 'Content-Type' => 'application/json'],
+        'body'    => wp_json_encode($payload),
+        'timeout' => 15,
     ]);
+    if (is_wp_error($resp)) {
+        error_log('[SLQ STOP-Bang] GHL error: ' . $resp->get_error_message());
+    } elseif (wp_remote_retrieve_response_code($resp) >= 400) {
+        error_log('[SLQ STOP-Bang] GHL HTTP ' . wp_remote_retrieve_response_code($resp) . ': ' . wp_remote_retrieve_body($resp));
+    }
 }
 
 /* ═══════════════════════════════════════════════════════════ */
