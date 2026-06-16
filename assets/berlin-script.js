@@ -30,6 +30,15 @@
       utilsScript: 'https://cdn.jsdelivr.net/npm/intl-tel-input@23/build/js/utils.js',
       separateDialCode: true,
     });
+    phoneInput.addEventListener('input', function () {
+      var dialCode = iti.getSelectedCountryData().dialCode || '';
+      var raw = phoneInput.value.replace(/[^\d]/g, '');
+      if (dialCode && raw.indexOf(dialCode) === 0) raw = raw.slice(dialCode.length);
+      if (raw.charAt(0) === '0') raw = raw.slice(1);
+      if (raw !== phoneInput.value) {
+        phoneInput.value = raw;
+      }
+    });
   }
 
   /* ── Style radio options with click feedback ── */
