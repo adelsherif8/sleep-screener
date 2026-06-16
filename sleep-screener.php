@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.2.6
+ * Version:     1.2.7
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.2.6');
+define('SLQ_VERSION',     '1.2.7');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -100,16 +100,16 @@ function slq_field_list(): array {
         'b_cat2_positive'  => ['label' => 'Berlin — Category 2 Positive', 'example' => 'Yes / No',                   'group' => 'Berlin Score',      'folder' => 'Berlin Questionnaire'],
         'b_cat3_positive'  => ['label' => 'Berlin — Category 3 Positive', 'example' => 'Yes / No',                   'group' => 'Berlin Score',      'folder' => 'Berlin Questionnaire'],
         // STOP-Bang Answers
-        'sb_snoring'       => ['label' => 'STOP-Bang — Snoring',          'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
-        'sb_tired'         => ['label' => 'STOP-Bang — Tired',            'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
-        'sb_observed'      => ['label' => 'STOP-Bang — Observed',         'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
-        'sb_pressure'      => ['label' => 'STOP-Bang — High Pressure',    'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
-        'sb_neck_large'    => ['label' => 'STOP-Bang — Neck ≥ 16″',       'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'sb_snoring'              => ['label' => 'STOP-Bang — Snoring',          'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'sb_tired'                => ['label' => 'STOP-Bang — Tired',            'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'sb_observed'             => ['label' => 'STOP-Bang — Observed',         'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'stopbang__high_pressure' => ['label' => 'STOP-Bang — High Pressure',    'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
+        'stopbang__neck__16'      => ['label' => 'STOP-Bang — Neck ≥ 16″',       'example' => 'yes / no',                   'group' => 'STOP-Bang Answers', 'folder' => 'STOP-Bang Questionnaire'],
         // STOP-Bang Score
-        'sb_stop_score'    => ['label' => 'STOP-Bang — STOP Score',       'example' => '3',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
-        'sb_bang_score'    => ['label' => 'STOP-Bang — BANG Score',       'example' => '2',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
-        'sb_total_score'   => ['label' => 'STOP-Bang — Total Score',      'example' => '5',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
-        'sb_risk_level'    => ['label' => 'STOP-Bang — Risk Level',       'example' => 'High / Intermediate / Low',  'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
+        'stopbang__stop_score'    => ['label' => 'STOP-Bang — STOP Score',       'example' => '3',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
+        'stopbang__bang_score'    => ['label' => 'STOP-Bang — BANG Score',       'example' => '2',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
+        'stopbang__total_score'   => ['label' => 'STOP-Bang — Total Score',      'example' => '5',                          'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
+        'stopbang__risk_level'    => ['label' => 'STOP-Bang — Risk Level',       'example' => 'High / Intermediate / Low',  'group' => 'STOP-Bang Score',   'folder' => 'STOP-Bang Questionnaire'],
     ];
 }
 
@@ -1089,20 +1089,20 @@ function slq_stopbang_ghl(array $d, array $score): void {
     $parts = explode(' ', trim($d['full_name'] ?? ''), 2);
 
     $field_map = [
-        'age'           => (string)($d['age']        ?? ''),
-        'gender'        => $d['gender']               ?? '',
-        'height'        => $d['height_display']        ?? '',
-        'weight'        => $d['weight_display']        ?? '',
-        'bmi'           => (string) $score['bmi'],
-        'sb_snoring'    => $d['snoring']               ?? '',
-        'sb_tired'      => $d['tired']                 ?? '',
-        'sb_observed'   => $d['observed']              ?? '',
-        'sb_pressure'   => $d['pressure']              ?? '',
-        'sb_neck_large' => $d['neck_large']            ?? '',
-        'sb_stop_score' => (string) $score['stop_score'],
-        'sb_bang_score' => (string) $score['bang_score'],
-        'sb_total_score'=> (string) $score['total'],
-        'sb_risk_level' => $score['risk'],
+        'age'                      => (string)($d['age']   ?? ''),
+        'gender'                   => $d['gender']          ?? '',
+        'height'                   => $d['height_display']  ?? '',
+        'weight'                   => $d['weight_display']  ?? '',
+        'bmi'                      => (string) $score['bmi'],
+        'sb_snoring'               => $d['snoring']         ?? '',
+        'sb_tired'                 => $d['tired']           ?? '',
+        'sb_observed'              => $d['observed']        ?? '',
+        'stopbang__high_pressure'  => $d['pressure']        ?? '',
+        'stopbang__neck__16'       => $d['neck_large']      ?? '',
+        'stopbang__stop_score'     => (string) $score['stop_score'],
+        'stopbang__bang_score'     => (string) $score['bang_score'],
+        'stopbang__total_score'    => (string) $score['total'],
+        'stopbang__risk_level'     => $score['risk'],
     ];
 
     $custom_fields = [];
