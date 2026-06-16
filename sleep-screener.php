@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.4
+ * Version:     1.1.5
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.4');
+define('SLQ_VERSION',     '1.1.5');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -852,7 +852,7 @@ function slq_berlin_ghl(array $d, array $score): void {
         'phone'      => $d['phone'] ?? '',
         'locationId' => $location_id,
         'source'     => 'Berlin Sleep Screener',
-        'tags'       => ['sleep-apnea-screening', $score['risk_level'] === 'High Risk' ? 'berlin-high-risk' : 'berlin-low-risk'],
+        'tags'       => ['berlin-questionnaire'],
     ];
     if (!empty($custom_fields)) $payload['customFields'] = $custom_fields;
 
@@ -974,7 +974,7 @@ function slq_stopbang_ghl(array $d, array $score): void {
         'phone'      => $d['phone'] ?? '',
         'locationId' => $location_id,
         'source'     => 'STOP-Bang Sleep Screener',
-        'tags'       => ['sleep-apnea-screening', 'sb-' . strtolower($score['risk']) . '-risk'],
+        'tags'       => ['stop-bang-questionnaire'],
     ];
     if (!empty($custom_fields)) $payload['customFields'] = $custom_fields;
 
