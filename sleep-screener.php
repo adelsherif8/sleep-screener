@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.2.7
+ * Version:     1.2.8
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.2.7');
+define('SLQ_VERSION',     '1.2.8');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -163,10 +163,31 @@ add_action('wp_ajax_slq_test_ghl', function () {
             $known_map = slq_field_list();
             $known     = array_keys($known_map);
             $found     = [];
+
+            // Build lookup by key and by label, then persist IDs so settings page auto-fills
+            $by_key   = [];
+            $by_label = [];
             foreach ($fields as $f) {
                 $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
-                if (in_array($bare, $known, true)) { $slq_fields++; $found[] = $bare; }
+                if ($bare && !empty($f['id']))              $by_key[$bare]                       = $f['id'];
+                $lbl = strtolower(trim($f['name'] ?? ''));
+                if ($lbl && !empty($f['id']))               $by_label[$lbl]                      = $f['id'];
             }
+            $saved_map = [];
+            foreach ($known_map as $slug => $meta) {
+                if (isset($by_key[$slug])) {
+                    update_option('slq_cf_' . $slug, $by_key[$slug]);
+                    $saved_map[$slug] = $by_key[$slug];
+                    $slq_fields++; $found[] = $slug;
+                } elseif (isset($by_label[strtolower($meta['label'])])) {
+                    $id = $by_label[strtolower($meta['label'])];
+                    update_option('slq_cf_' . $slug, $id);
+                    $saved_map[$slug] = $id;
+                    $slq_fields++; $found[] = $slug;
+                }
+            }
+            if (!empty($saved_map)) set_transient('slq_ghl_field_map', $saved_map, HOUR_IN_SECONDS);
+
             foreach ($known as $k) {
                 if (!in_array($k, $found, true)) {
                     $missing[] = $known_map[$k]['label'] . ' (' . $k . ')';
