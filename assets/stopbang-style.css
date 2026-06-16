@@ -40,7 +40,7 @@
   margin: 48px auto;
   background: var(--sbq-bg);
   border-radius: var(--sbq-radius);
-  overflow: hidden;
+  overflow: clip;
   box-shadow: var(--sbq-shadow), 0 1px 3px rgba(0,0,0,0.06);
   border: 1px solid var(--sbq-border);
 }
@@ -202,6 +202,24 @@
   transition: border-color var(--sbq-transition), box-shadow var(--sbq-transition);
   box-sizing: border-box;
   outline: none;
+}
+
+/* ── intl-tel-input overrides ── */
+#sbq-wrap .iti {
+  width: 100%;
+  display: block;
+}
+#sbq-wrap .iti input[type="tel"] {
+  padding-left: 95px;
+}
+#sbq-wrap .iti__flag-container {
+  position: absolute;
+}
+#sbq-wrap .iti__selected-dial-code {
+  font-size: 0.9rem;
+}
+.iti__dropdown-content {
+  z-index: 99999 !important;
 }
 
 .sbq-field input:focus {

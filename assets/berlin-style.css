@@ -42,7 +42,7 @@
   margin: 48px auto;
   background: var(--bsq-bg);
   border-radius: var(--bsq-radius);
-  overflow: hidden;
+  overflow: clip;
   box-shadow: var(--bsq-shadow), 0 1px 3px rgba(0,0,0,0.06);
   border: 1px solid var(--bsq-border);
 }
@@ -123,7 +123,6 @@
 .bsq-body {
   background: var(--bsq-card);
   position: relative;
-  overflow: hidden;
 }
 
 .bsq-step {
@@ -221,6 +220,24 @@
   transition: border-color var(--bsq-transition), box-shadow var(--bsq-transition);
   box-sizing: border-box;
   outline: none;
+}
+
+/* ── intl-tel-input overrides ── */
+#bsq-wrap .iti {
+  width: 100%;
+  display: block;
+}
+#bsq-wrap .iti input[type="tel"] {
+  padding-left: 95px;
+}
+#bsq-wrap .iti__flag-container {
+  position: absolute;
+}
+#bsq-wrap .iti__selected-dial-code {
+  font-size: 0.9rem;
+}
+.iti__dropdown-content {
+  z-index: 99999 !important;
 }
 
 .bsq-field input:focus {
