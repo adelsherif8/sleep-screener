@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.2.1
+ * Version:     1.2.2
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,7 +11,7 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.2.1');
+define('SLQ_VERSION',     '1.2.2');
 define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
@@ -133,6 +133,48 @@ add_action('admin_menu', function () {
     );
 });
 
+/* ─── Admin AJAX: test GHL connection ─────────────────────── */
+
+add_action('wp_ajax_slq_test_ghl', function () {
+    check_ajax_referer('slq_ghl', 'nonce');
+    if (!current_user_can('manage_options')) wp_send_json_error();
+    $api_key     = get_option('slq_ghl_api_key', '');
+    $location_id = get_option('slq_ghl_location_id', '');
+    if (!$api_key)     wp_send_json_error(['message' => 'API Key is not saved.']);
+    if (!$location_id) wp_send_json_error(['message' => 'Location ID is not saved.']);
+    $r = wp_remote_get('https://services.leadconnectorhq.com/locations/' . $location_id, [
+        'headers' => slq_ghl_headers(), 'timeout' => 10,
+    ]);
+    if (is_wp_error($r)) wp_send_json_error(['message' => 'Connection failed: ' . $r->get_error_message()]);
+    $code = wp_remote_retrieve_response_code($r);
+    $body = json_decode(wp_remote_retrieve_body($r), true) ?? [];
+    if ($code === 200) {
+        // Also check field map
+        delete_transient('slq_ghl_field_map');
+        $fr = wp_remote_get('https://services.leadconnectorhq.com/locations/' . $location_id . '/customFields', [
+            'headers' => slq_ghl_headers(), 'timeout' => 10,
+        ]);
+        $field_count = 0;
+        $slq_fields  = 0;
+        if (!is_wp_error($fr) && wp_remote_retrieve_response_code($fr) < 400) {
+            $fields = json_decode(wp_remote_retrieve_body($fr), true)['customFields'] ?? [];
+            $field_count = count($fields);
+            $known = array_keys(slq_field_list());
+            foreach ($fields as $f) {
+                $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
+                if (in_array($bare, $known, true)) $slq_fields++;
+            }
+        }
+        wp_send_json_success([
+            'location' => $body['location']['name'] ?? 'Unknown',
+            'fields_total' => $field_count,
+            'fields_mapped' => $slq_fields,
+            'fields_expected' => count(slq_field_list()),
+        ]);
+    }
+    wp_send_json_error(['message' => 'GHL returned HTTP ' . $code . ': ' . ($body['message'] ?? 'Unknown error')]);
+});
+
 /* ─── Admin AJAX: force update check ──────────────────────── */
 
 add_action('wp_ajax_slq_force_update_check', function () {
@@ -156,30 +198,49 @@ function slq_ghl_headers(): array {
 /* ─── Helper: resolve GHL custom field ID by key ──────────── */
 
 function slq_resolve_field_id(string $key): string {
+    // Use saved option first — fastest path
     $saved = get_option('slq_cf_' . $key, '');
     if ($saved) return $saved;
 
+    // Try cached map
     $map = get_transient('slq_ghl_field_map');
-    if ($map === false) {
-        $api_key     = get_option('slq_ghl_api_key', '');
-        $location_id = get_option('slq_ghl_location_id', '');
-        if (!$api_key || !$location_id) return '';
-        $r = wp_remote_get('https://services.leadconnectorhq.com/locations/' . $location_id . '/customFields', [
-            'headers' => slq_ghl_headers(),
-            'timeout' => 10,
-        ]);
-        $map = [];
-        if (!is_wp_error($r) && wp_remote_retrieve_response_code($r) < 400) {
-            foreach (json_decode(wp_remote_retrieve_body($r), true)['customFields'] ?? [] as $f) {
-                $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
-                if ($bare && !empty($f['id'])) {
-                    $map[$bare] = $f['id'];
-                    update_option('slq_cf_' . $bare, $f['id']);
-                }
-            }
+    if (is_array($map) && !empty($map)) {
+        return $map[$key] ?? '';
+    }
+
+    // Fetch from GHL — only runs once per hour and only when options not set
+    $api_key     = get_option('slq_ghl_api_key', '');
+    $location_id = get_option('slq_ghl_location_id', '');
+    if (!$api_key || !$location_id) return '';
+
+    $r = wp_remote_get('https://services.leadconnectorhq.com/locations/' . $location_id . '/customFields', [
+        'headers' => slq_ghl_headers(),
+        'timeout' => 10,
+    ]);
+
+    if (is_wp_error($r)) {
+        error_log('[SLQ] Field map fetch error: ' . $r->get_error_message());
+        return '';
+    }
+    if (wp_remote_retrieve_response_code($r) >= 400) {
+        error_log('[SLQ] Field map fetch HTTP ' . wp_remote_retrieve_response_code($r) . ' — check API key has Custom Fields: Read scope');
+        return '';
+    }
+
+    $map = [];
+    foreach (json_decode(wp_remote_retrieve_body($r), true)['customFields'] ?? [] as $f) {
+        $bare = strtolower(preg_replace('/^contact\./', '', $f['fieldKey'] ?? ''));
+        if ($bare && !empty($f['id'])) {
+            $map[$bare] = $f['id'];
+            update_option('slq_cf_' . $bare, $f['id']);
         }
+    }
+
+    // Only cache if we actually got fields — don't cache empty on failure
+    if (!empty($map)) {
         set_transient('slq_ghl_field_map', $map, HOUR_IN_SECONDS);
     }
+
     return $map[$key] ?? '';
 }
 
@@ -499,6 +560,10 @@ function slq_render_settings() {
                         </td>
                     </tr>
                 </table>
+                <div style="margin-top:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+                    <button type="button" id="slq-test-ghl-btn" class="button">&#9654; Test GHL Connection</button>
+                    <span id="slq-test-ghl-result" style="font-size:13px;color:#64748b"></span>
+                </div>
             </div>
 
             <!-- ── GHL Field Setup ── -->
@@ -650,6 +715,25 @@ function slq_render_settings() {
             }
 
             var fst = document.getElementById('slq-folder-status');
+
+            // Test GHL Connection
+            document.getElementById('slq-test-ghl-btn').addEventListener('click', function() {
+                var btn = this, res = document.getElementById('slq-test-ghl-result');
+                btn.disabled = true; res.textContent = 'Testing…'; res.style.color = '#6b7280';
+                ghlPost('slq_test_ghl', {}, function(r) {
+                    btn.disabled = false;
+                    if (r.success) {
+                        var d = r.data;
+                        res.style.color = d.fields_mapped >= d.fields_expected ? '#16a34a' : '#d97706';
+                        res.textContent = '✓ Connected to "' + d.location + '" — '
+                            + d.fields_mapped + '/' + d.fields_expected + ' screener fields found in GHL'
+                            + (d.fields_mapped < d.fields_expected ? ' (run Create & Move All Fields to add missing ones)' : '');
+                    } else {
+                        res.style.color = '#dc2626';
+                        res.textContent = '✗ ' + (r.data && r.data.message || 'Error');
+                    }
+                });
+            });
 
             // Save Folder IDs
             document.getElementById('slq-save-folder-id-btn').addEventListener('click', function() {
