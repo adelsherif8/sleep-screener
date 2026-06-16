@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Sleep Apnea Screener
  * Description: Berlin Sleep Questionnaire and STOP-Bang Questionnaire with scoring, results, and GoHighLevel integration.
- * Version:     1.1.3
+ * Version:     1.1.4
  * Author:      Adel Emad
  * Author URI:  https://upwork.com/freelancers/adelsherif8
  * License:     GPL-2.0+
@@ -11,10 +11,56 @@
 
 defined('ABSPATH') || exit;
 
-define('SLQ_VERSION',     '1.1.3');
+define('SLQ_VERSION',     '1.1.4');
+define('SLQ_DB_VERSION',  '1');
 define('SLQ_DIR',         plugin_dir_path(__FILE__));
 define('SLQ_URL',         plugin_dir_url(__FILE__));
 define('SLQ_GITHUB_REPO', 'adelsherif8/sleep-screener');
+
+/* ─── Database setup ──────────────────────────────────────── */
+
+function slq_maybe_create_table(): void {
+    if (get_option('slq_db_version') === SLQ_DB_VERSION) return;
+    global $wpdb;
+    $table   = $wpdb->prefix . 'slq_entries';
+    $charset = $wpdb->get_charset_collate();
+    $sql = "CREATE TABLE {$table} (
+  id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  form varchar(20) NOT NULL,
+  submitted_at datetime NOT NULL,
+  full_name varchar(255) NOT NULL DEFAULT '',
+  email varchar(255) NOT NULL DEFAULT '',
+  phone varchar(50) NOT NULL DEFAULT '',
+  risk_level varchar(30) NOT NULL DEFAULT '',
+  score_data longtext NOT NULL,
+  form_data longtext NOT NULL,
+  PRIMARY KEY  (id),
+  KEY submitted_at (submitted_at),
+  KEY email (email(191))
+) {$charset};";
+    require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+    dbDelta($sql);
+    update_option('slq_db_version', SLQ_DB_VERSION);
+}
+add_action('init', 'slq_maybe_create_table');
+
+function slq_save_entry(string $form, string $full_name, string $email, string $phone, string $risk_level, array $score, array $form_data): void {
+    global $wpdb;
+    $wpdb->insert(
+        $wpdb->prefix . 'slq_entries',
+        [
+            'form'         => $form,
+            'submitted_at' => current_time('mysql'),
+            'full_name'    => $full_name,
+            'email'        => $email,
+            'phone'        => $phone,
+            'risk_level'   => $risk_level,
+            'score_data'   => wp_json_encode($score),
+            'form_data'    => wp_json_encode($form_data),
+        ],
+        ['%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']
+    );
+}
 
 /* ─── CSS variable helper ──────────────────────────────────── */
 
@@ -76,6 +122,14 @@ add_action('admin_menu', function () {
         'manage_options',
         'slq-settings',
         'slq_render_settings'
+    );
+    add_submenu_page(
+        'options-general.php',
+        'Sleep Screener Entries',
+        'Sleep Screener Entries',
+        'manage_options',
+        'slq-entries',
+        'slq_render_entries'
     );
 });
 
@@ -716,6 +770,7 @@ function slq_berlin_submit() {
     if (!empty($d['_hp']))                     { wp_send_json_success([]); return; }
     if (intval($d['_elapsed'] ?? 0) < 3)        { wp_send_json_success([]); return; }
     $score = slq_berlin_score($d);
+    slq_save_entry('berlin', $d['full_name'] ?? '', $d['email'] ?? '', $d['phone'] ?? '', $score['risk_level'], $score, $d);
     if (get_option('slq_ghl_api_key') && get_option('slq_ghl_location_id')) {
         slq_berlin_ghl($d, $score);
     }
@@ -842,6 +897,7 @@ function slq_stopbang_submit() {
     if (!empty($d['_hp']))               { wp_send_json_success([]); return; }
     if (intval($d['_elapsed'] ?? 0) < 3) { wp_send_json_success([]); return; }
     $score = slq_stopbang_score($d);
+    slq_save_entry('stopbang', $d['full_name'] ?? '', $d['email'] ?? '', $d['phone'] ?? '', $score['risk'], $score, $d);
     if (get_option('slq_ghl_api_key') && get_option('slq_ghl_location_id')) {
         slq_stopbang_ghl($d, $score);
     }
@@ -932,6 +988,150 @@ function slq_stopbang_ghl(array $d, array $score): void {
     } elseif (wp_remote_retrieve_response_code($resp) >= 400) {
         error_log('[SLQ STOP-Bang] GHL HTTP ' . wp_remote_retrieve_response_code($resp) . ': ' . wp_remote_retrieve_body($resp));
     }
+}
+
+/* ═══════════════════════════════════════════════════════════ */
+/* ENTRIES PAGE                                                */
+/* ═══════════════════════════════════════════════════════════ */
+
+add_action('admin_post_slq_delete_entry', function () {
+    check_admin_referer('slq_delete_entry');
+    if (!current_user_can('manage_options')) wp_die('Forbidden');
+    global $wpdb;
+    $id = intval($_GET['entry_id'] ?? 0);
+    if ($id) $wpdb->delete($wpdb->prefix . 'slq_entries', ['id' => $id], ['%d']);
+    wp_safe_redirect(admin_url('options-general.php?page=slq-entries&deleted=1'));
+    exit;
+});
+
+add_action('admin_post_slq_export_csv', function () {
+    check_admin_referer('slq_export_csv');
+    if (!current_user_can('manage_options')) wp_die('Forbidden');
+    global $wpdb;
+    $rows = $wpdb->get_results("SELECT * FROM {$wpdb->prefix}slq_entries ORDER BY submitted_at DESC", ARRAY_A);
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="sleep-screener-entries-' . date('Y-m-d') . '.csv"');
+    $out = fopen('php://output', 'w');
+    fputcsv($out, ['ID', 'Form', 'Date', 'Name', 'Email', 'Phone', 'Risk Level']);
+    foreach ($rows as $row) {
+        fputcsv($out, [$row['id'], strtoupper($row['form']), $row['submitted_at'], $row['full_name'], $row['email'], $row['phone'], $row['risk_level']]);
+    }
+    fclose($out);
+    exit;
+});
+
+function slq_render_entries(): void {
+    global $wpdb;
+    $table    = $wpdb->prefix . 'slq_entries';
+    $per_page = 25;
+    $page     = max(1, intval($_GET['paged'] ?? 1));
+    $filter   = sanitize_text_field($_GET['form_filter'] ?? '');
+    $search   = sanitize_text_field($_GET['s'] ?? '');
+
+    $where = 'WHERE 1=1';
+    if ($filter === 'berlin')   $where .= " AND form = 'berlin'";
+    if ($filter === 'stopbang') $where .= " AND form = 'stopbang'";
+    if ($search) {
+        $like   = '%' . $wpdb->esc_like($search) . '%';
+        $where .= $wpdb->prepare(" AND (full_name LIKE %s OR email LIKE %s OR phone LIKE %s)", $like, $like, $like);
+    }
+
+    $total   = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$table} {$where}");
+    $offset  = ($page - 1) * $per_page;
+    $entries = $wpdb->get_results("SELECT * FROM {$table} {$where} ORDER BY submitted_at DESC LIMIT {$per_page} OFFSET {$offset}");
+    $pages   = max(1, ceil($total / $per_page));
+
+    $risk_colors = [
+        'High Risk'    => '#dc2626', 'High'         => '#dc2626',
+        'Intermediate' => '#d97706',
+        'Low Risk'     => '#16a34a', 'Low'          => '#16a34a',
+    ];
+    ?>
+    <div class="wrap" style="max-width:1100px">
+        <h1 style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+            <span>Sleep Screener Entries
+                <span style="font-size:14px;font-weight:400;color:#64748b;margin-left:8px"><?php echo $total; ?> total</span>
+            </span>
+            <form method="post" action="<?php echo admin_url('admin-post.php'); ?>" style="margin:0">
+                <?php wp_nonce_field('slq_export_csv'); ?>
+                <input type="hidden" name="action" value="slq_export_csv">
+                <button type="submit" class="button button-secondary">&#11015; Export CSV</button>
+            </form>
+        </h1>
+
+        <?php if (!empty($_GET['deleted'])): ?>
+            <div class="notice notice-success is-dismissible"><p>Entry deleted.</p></div>
+        <?php endif; ?>
+
+        <!-- Filters -->
+        <form method="get" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px">
+            <input type="hidden" name="page" value="slq-entries">
+            <input type="text" name="s" placeholder="Search name / email / phone…" value="<?php echo esc_attr($search); ?>" style="width:240px">
+            <select name="form_filter">
+                <option value="">All Forms</option>
+                <option value="berlin"   <?php selected($filter, 'berlin'); ?>>Berlin</option>
+                <option value="stopbang" <?php selected($filter, 'stopbang'); ?>>STOP-Bang</option>
+            </select>
+            <button type="submit" class="button">Filter</button>
+            <?php if ($search || $filter): ?>
+                <a href="<?php echo admin_url('options-general.php?page=slq-entries'); ?>" class="button">Clear</a>
+            <?php endif; ?>
+        </form>
+
+        <?php if (empty($entries)): ?>
+            <p style="color:#64748b">No entries yet — entries will appear here as patients complete the forms.</p>
+        <?php else: ?>
+        <table class="wp-list-table widefat fixed striped" style="border-radius:8px;overflow:hidden">
+            <thead>
+                <tr>
+                    <th style="width:50px">#</th>
+                    <th style="width:140px">Date</th>
+                    <th style="width:80px">Form</th>
+                    <th>Name</th>
+                    <th>Email</th>
+                    <th style="width:130px">Phone</th>
+                    <th style="width:130px">Risk Level</th>
+                    <th style="width:70px"></th>
+                </tr>
+            </thead>
+            <tbody>
+            <?php foreach ($entries as $e):
+                $color = $risk_colors[$e->risk_level] ?? '#64748b';
+                $delete_url = wp_nonce_url(
+                    admin_url('admin-post.php?action=slq_delete_entry&entry_id=' . $e->id),
+                    'slq_delete_entry'
+                );
+            ?>
+                <tr>
+                    <td style="color:#94a3b8"><?php echo $e->id; ?></td>
+                    <td style="font-size:12px;color:#475569"><?php echo esc_html(date('M j, Y g:i a', strtotime($e->submitted_at))); ?></td>
+                    <td><span style="background:<?php echo $e->form === 'berlin' ? '#eff6ff' : '#faf5ff'; ?>;color:<?php echo $e->form === 'berlin' ? '#1d4ed8' : '#7e22ce'; ?>;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:700;text-transform:uppercase"><?php echo esc_html($e->form); ?></span></td>
+                    <td style="font-weight:500"><?php echo esc_html($e->full_name); ?></td>
+                    <td><a href="mailto:<?php echo esc_attr($e->email); ?>"><?php echo esc_html($e->email); ?></a></td>
+                    <td><?php echo esc_html($e->phone); ?></td>
+                    <td><span style="color:<?php echo $color; ?>;font-weight:700;font-size:12px"><?php echo esc_html($e->risk_level); ?></span></td>
+                    <td><a href="<?php echo esc_url($delete_url); ?>" style="color:#dc2626;font-size:12px" onclick="return confirm('Delete this entry?')">Delete</a></td>
+                </tr>
+            <?php endforeach; ?>
+            </tbody>
+        </table>
+
+        <!-- Pagination -->
+        <?php if ($pages > 1): ?>
+        <div style="margin-top:16px;display:flex;gap:6px;align-items:center">
+            <?php for ($i = 1; $i <= $pages; $i++):
+                $url = add_query_arg(['page' => 'slq-entries', 'paged' => $i, 's' => $search, 'form_filter' => $filter], admin_url('options-general.php'));
+            ?>
+                <a href="<?php echo esc_url($url); ?>"
+                   style="padding:4px 10px;border-radius:4px;border:1px solid <?php echo $i === $page ? '#2563eb' : '#e2e8f0'; ?>;background:<?php echo $i === $page ? '#2563eb' : '#fff'; ?>;color:<?php echo $i === $page ? '#fff' : '#374151'; ?>;text-decoration:none;font-size:13px">
+                    <?php echo $i; ?>
+                </a>
+            <?php endfor; ?>
+        </div>
+        <?php endif; ?>
+        <?php endif; ?>
+    </div>
+    <?php
 }
 
 /* ═══════════════════════════════════════════════════════════ */
