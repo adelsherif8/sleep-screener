@@ -110,11 +110,11 @@
 
           <div class="sbq-bmi-calc">
             <div class="sbq-unit-toggle">
-              <button type="button" class="sbq-unit-btn active" data-unit="metric">cm / kg</button>
-              <button type="button" class="sbq-unit-btn" data-unit="imperial">inches / lb</button>
+              <button type="button" class="sbq-unit-btn" data-unit="metric">cm / kg</button>
+              <button type="button" class="sbq-unit-btn active" data-unit="imperial">inches / lb</button>
             </div>
 
-            <div id="sbq-metric-inputs" class="sbq-unit-inputs sbq-field-row">
+            <div id="sbq-metric-inputs" class="sbq-unit-inputs sbq-field-row" style="display:none">
               <div class="sbq-field">
                 <label for="sbq-h-cm">Height (cm)</label>
                 <input type="number" id="sbq-h-cm" name="height_cm" min="100" max="250" placeholder="e.g. 178" />
@@ -125,7 +125,7 @@
               </div>
             </div>
 
-            <div id="sbq-imperial-inputs" class="sbq-unit-inputs" style="display:none">
+            <div id="sbq-imperial-inputs" class="sbq-unit-inputs sbq-field-row">
               <div class="sbq-field-row">
                 <div class="sbq-field">
                   <label>Height</label>

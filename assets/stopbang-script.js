@@ -4,7 +4,7 @@
 
   var TOTAL_STEPS = 3;
   var currentStep = 1;
-  var bmiUnit     = 'metric';
+  var bmiUnit     = 'imperial';
   var sbqLoadedAt = Date.now();
 
   /* ── DOM refs ── */
